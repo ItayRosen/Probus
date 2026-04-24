@@ -67,7 +67,8 @@ export function defaultModels(provider: KnownProvider): ModelDefaults {
   switch (provider) {
     case 'openrouter':
       return {
-        researcher: 'openrouter/qwen/qwen3.6-plus',
+        // researcher: 'openrouter/qwen/qwen3.6-plus',
+        researcher: 'openrouter/anthropic/claude-sonnet-4.6',
         qa: 'openrouter/anthropic/claude-opus-4.7',
       };
     case 'openai':
@@ -77,8 +78,8 @@ export function defaultModels(provider: KnownProvider): ModelDefaults {
       };
     case 'anthropic':
       return {
-        researcher: 'anthropic/claude-sonnet-4.6',
-        qa: 'anthropic/claude-opus-4.7',
+        researcher: 'anthropic/claude-sonnet-4-6',
+        qa: 'anthropic/claude-opus-4-7',
       };
   }
 }
