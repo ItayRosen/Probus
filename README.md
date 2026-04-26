@@ -16,9 +16,9 @@ I created this project after finding (and reporting) vulnerabilities in my chain
 
 Probus harnesses 3 agents that:
 
-- [Analyst] Analyze the codebase and pick key files (e.g. entry points, third-party surface, dangerous sinks).
-- [Researcher] Scan each file, dig through its chains of calls, and write raw findings.
-- [QA] Independently verify each finding, make sure it has a real attack vector, and write a report for every real vulnerability.
+- [Analyst] Analyze the codebase and pick key files for deep scanning (e.g. entry points, third-party surface, dangerous sinks).
+- [Researcher] Scan each file, dig through its chains of calls, and write raw findings (potential vulnerabilities).
+- [QA] Independently verify each finding, make sure it has a real attack vector, and write a report.
 
 ## Quick start
 
@@ -29,7 +29,7 @@ probus scan ./my-app
 
 ## Model providers
 
-Probus runs most (cost) effectively with open models using [OpenRouter](https://openrouter.ai). It is still possible however to use other providers, such as [OpenAI](https://openai.com) or [Anthropic](https://anthropic.com), however the cost will be higher.
+Probus runs most (cost) effectively with open models using [OpenRouter](https://openrouter.ai). It is still possible however to use other providers, such as [OpenAI](https://openai.com) or [Anthropic](https://anthropic.com), albeit with higher costs.
 
 ## Usage
 
