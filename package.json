@@ -5,13 +5,13 @@
   "type": "module",
   "license": "Apache-2.0",
   "author": "probus contributors",
-  "homepage": "https://github.com/ItayRosen/Probus",
+  "homepage": "https://github.com/etairl/Probus",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ItayRosen/Probus.git"
+    "url": "git+https://github.com/etairl/Probus.git"
   },
   "bugs": {
-    "url": "https://github.com/ItayRosen/Probus/issues"
+    "url": "https://github.com/etairl/Probus/issues"
   },
   "keywords": [
     "security",
