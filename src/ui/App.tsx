@@ -446,6 +446,9 @@ export function App({
                 <Text color={isSel ? 'white' : 'gray'} bold={isSel}>
                   {PROVIDER_LABEL[p]}
                 </Text>
+                {p === 'openrouter' && (
+                  <Text color="green">(recommended)</Text>
+                )}
                 <Text color="gray" dimColor>— {envVarForProvider(p)}</Text>
               </Box>
             );
