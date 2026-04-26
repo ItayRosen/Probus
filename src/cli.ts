@@ -117,19 +117,69 @@ export function resolveDefaults(
   return { provider, primary: d.primary, secondary: d.secondary };
 }
 
+// ANSI styling — only emitted if stdout is a TTY and NO_COLOR isn't set.
+const useColor =
+  process.stdout.isTTY && !process.env.NO_COLOR && process.env.TERM !== 'dumb';
+const wrap = (open: string, close: string) =>
+  (s: string) => (useColor ? `\x1b[${open}m${s}\x1b[${close}m` : s);
+const bold = wrap('1', '22');
+const dim = wrap('2', '22');
+const cyan = wrap('36', '39');
+const magenta = wrap('35', '39');
+const yellow = wrap('33', '39');
+const green = wrap('32', '39');
+
+const heading = (s: string) => bold(magenta(s));
+const flag = (s: string) => cyan(s);
+const cmd = (s: string) => green(s);
+const arg = (s: string) => yellow(s);
+
 export const HELP_TEXT = [
-  'Usage:',
-  '  probus scan <repo-path> [--effort low|medium|high] [--primaryModel slug] [--secondaryModel slug] [--provider openai|openrouter|anthropic] [--parallel N]',
-  '  probus view <repo-path>',
   '',
-  'Model slugs are "<providerID>/<modelID>", e.g. "openai/gpt-5.4" or',
-  '"openrouter/qwen/qwen3.6-plus". If --primaryModel / --secondaryModel are',
-  'omitted we pick defaults based on which *_API_KEY is set (openrouter',
-  'beats openai beats anthropic). Use --provider to force a pick when',
-  'multiple keys are available.',
+  `  ${bold(magenta('probus'))} ${dim('— agentic security scanner for code repos')}`,
   '',
-  'Effort controls how many files the analyst targets:',
-  '  low (default) ≈ 50 files   medium ≈ 100   high ≈ 500',
+  `  ${heading('USAGE')}`,
+  `    ${cmd('probus scan')} ${arg('<repo-path>')} ${dim('[options]')}`,
+  `    ${cmd('probus view')} ${arg('<repo-path>')}`,
   '',
-  '--parallel N runs N files through primary+secondary concurrently (default 1, max 16).',
+  `  ${heading('COMMANDS')}`,
+  `    ${cmd('scan')}    Run analyst → primary → secondary on a repo`,
+  `    ${cmd('view')}    Browse a previously-scanned repo's reports`,
+  '',
+  `  ${heading('OPTIONS')}`,
+  `    ${flag('--effort')} ${arg('<low|medium|high>')}    File budget for the analyst.`,
+  `                                ${dim('low ≈ 50 · medium ≈ 100 · high ≈ 500   (default: low)')}`,
+  `    ${flag('--parallel')} ${arg('<N>')}                Files to scan concurrently. ${dim('(default: 1, max: 16)')}`,
+  `    ${flag('--provider')} ${arg('<openrouter|openai|anthropic>')}`,
+  `                                Force a provider when multiple ${arg('*_API_KEY')} env vars are set.`,
+  `    ${flag('--primaryModel')} ${arg('<slug>')}         Override the primary model (per-file scanner).`,
+  `    ${flag('--secondaryModel')} ${arg('<slug>')}       Override the secondary model (verifier).`,
+  `    ${flag('-h')}, ${flag('--help')}                      Show this help.`,
+  '',
+  `  ${heading('MODELS')}`,
+  `    Model slugs look like ${arg('<provider>/<model>')}, e.g. ${arg('openai/gpt-5.4')}`,
+  `    or ${arg('openrouter/qwen/qwen3.6-plus')}.`,
+  '',
+  `    Defaults are picked from whichever ${arg('*_API_KEY')} is set:`,
+  `      ${dim('OPENROUTER_API_KEY  →  openrouter (preferred)')}`,
+  `      ${dim('OPENAI_API_KEY      →  openai')}`,
+  `      ${dim('ANTHROPIC_API_KEY   →  anthropic')}`,
+  '',
+  `  ${heading('EXAMPLES')}`,
+  `    ${dim('# scan a repo with defaults')}`,
+  `    ${cmd('$')} probus scan ./my-app`,
+  '',
+  `    ${dim('# medium effort, 4 files in parallel')}`,
+  `    ${cmd('$')} probus scan ./my-app --effort medium --parallel 4`,
+  '',
+  `    ${dim('# pin specific models')}`,
+  `    ${cmd('$')} probus scan ./my-app \\`,
+  `        --primaryModel anthropic/claude-sonnet-4-6 \\`,
+  `        --secondaryModel anthropic/claude-opus-4-7`,
+  '',
+  `    ${dim('# browse previous results')}`,
+  `    ${cmd('$')} probus view ./my-app`,
+  '',
+  `  ${dim('Docs: https://github.com/ItayRosen/Probus')}`,
+  '',
 ].join('\n');
