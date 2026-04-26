@@ -10,7 +10,7 @@
 
 ---
 
-I created this project after finding (and reporting) vulnerabilities in my chain of dependencies (n8n, AI sdk, langraphjs and more), to help other developers better secure their code before a malicious actor does.
+I created this project after finding (and reporting) vulnerabilities in my chain of dependencies (n8n, AI sdk, langraphjs and more), to help other developers better secure their code before a malicious actor takes advantage.
 
 ## What it does
 
