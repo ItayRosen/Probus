@@ -26,7 +26,7 @@
     "ink"
   ],
   "bin": {
-    "probus": "./dist/index.js"
+    "probus": "dist/index.js"
   },
   "files": [
     "dist",
