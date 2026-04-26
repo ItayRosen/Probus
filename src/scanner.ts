@@ -368,8 +368,8 @@ export async function* scanAndVerify(
   file: string,
   repoPath: string,
   outputDir: string,
-  researcherModel: string,
-  qaModel: string,
+  primaryModel: string,
+  secondaryModel: string,
   signal?: AbortSignal,
 ): AsyncGenerator<ScanEvent> {
   const absFile = path.resolve(repoPath, file);
@@ -384,7 +384,7 @@ export async function* scanAndVerify(
     try { writeFileSync(jsonPath, ''); } catch { /* ignore */ }
   }
 
-  for await (const ev of runAgent(researcherPrompt(absFile, jsonPath), repoPath, researcherModel, signal, logFile, 'researcher')) {
+  for await (const ev of runAgent(researcherPrompt(absFile, jsonPath), repoPath, primaryModel, signal, logFile, 'primary')) {
     if (ev.type === 'chunk') yield { type: 'chunk', text: ev.text };
     else if (ev.type === 'usage') yield { type: 'usage', tokens: ev.tokens };
     else if (ev.type === 'skipped') { yield { type: 'skipped' }; return; }
@@ -421,7 +421,7 @@ export async function* scanAndVerify(
 
   const reportsPath = reportsDir(outputDir);
   const reportSlug = fileSlug(file);
-  for await (const ev of runAgent(qaPrompt(absFile, jsonPath, reportsPath, reportSlug), repoPath, qaModel, signal, logFile, 'qa')) {
+  for await (const ev of runAgent(qaPrompt(absFile, jsonPath, reportsPath, reportSlug), repoPath, secondaryModel, signal, logFile, 'secondary')) {
     if (ev.type === 'chunk') yield { type: 'chunk', text: ev.text };
     else if (ev.type === 'usage') yield { type: 'usage', tokens: ev.tokens };
     else if (ev.type === 'skipped') { yield { type: 'skipped' }; return; }

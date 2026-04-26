@@ -49,8 +49,8 @@ export const EFFORT_FILE_LIMIT: Record<Effort, number> = { low: 50, medium: 100,
 
 interface Props {
   targetRepo: string;
-  researcherModel: string | null;
-  qaModel: string | null;
+  primaryModel: string | null;
+  secondaryModel: string | null;
   mode?: 'scan' | 'view';
   effort?: Effort;
   preferredProvider?: KnownProvider | null;
@@ -114,8 +114,8 @@ const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2
 
 export function App({
   targetRepo,
-  researcherModel: researcherModelProp,
-  qaModel: qaModelProp,
+  primaryModel: primaryModelProp,
+  secondaryModel: secondaryModelProp,
   mode = 'scan',
   effort = 'low',
   preferredProvider = null,
@@ -138,13 +138,13 @@ export function App({
   // start until chosenProvider !== null.
   const activeProvider: KnownProvider = chosenProvider ?? 'openrouter';
   const defaults = defaultModels(activeProvider);
-  const researcherModel = researcherModelProp ?? defaults.researcher;
-  const qaModel = qaModelProp ?? defaults.qa;
+  const primaryModel = primaryModelProp ?? defaults.primary;
+  const secondaryModel = secondaryModelProp ?? defaults.secondary;
 
   // Providers whose keys we need. Collapses to one in the common case.
   const requiredProviders = new Set<string>();
-  try { requiredProviders.add(splitModel(researcherModel).providerID); } catch { /* invalid slug surfaces later */ }
-  try { requiredProviders.add(splitModel(qaModel).providerID); } catch { /* ignore */ }
+  try { requiredProviders.add(splitModel(primaryModel).providerID); } catch { /* invalid slug surfaces later */ }
+  try { requiredProviders.add(splitModel(secondaryModel).providerID); } catch { /* ignore */ }
   requiredProviders.add(activeProvider);
   const missingProviderKey = mode === 'scan' && chosenProvider
     ? [...requiredProviders].find(p => !process.env[envVarForProvider(p)])
@@ -171,6 +171,7 @@ export function App({
   const [reportContent, setReportContent] = useState<string>('');
   const [viewIdx, setViewIdx] = useState<number | null>(null);
   const [tokens, setTokens] = useState(0);
+  const [resumedFindings, setResumedFindings] = useState(0);
   const running = useRef(false);
   const skipSignal = useRef<AbortController | null>(null);
   // Per-file abort controllers during parallel scanning. `s` aborts whatever
@@ -293,13 +294,17 @@ export function App({
       try {
         ensureOutputDir(outputDir);
 
-        // Counter starts at 0 each scan — existing reports on disk are only
-        // surfaced in `probus view`, not mixed into the live scan progress.
+        // Continuing a previous run: prime the vulnerabilities counter with
+        // whatever was already verified on disk, so the total stays accurate
+        // (cached files are skipped and won't re-contribute via `realFindings`).
+        try {
+          setResumedFindings(listVerifiedReports(outputDir).length);
+        } catch { /* non-fatal */ }
 
         skipSignal.current = new AbortController();
         let paths: string[] | null = null;
 
-        for await (const ev of runAnalyst(repoPath, outputDir, researcherModel, EFFORT_FILE_LIMIT[effort], skipSignal.current.signal)) {
+        for await (const ev of runAnalyst(repoPath, outputDir, primaryModel, EFFORT_FILE_LIMIT[effort], skipSignal.current.signal)) {
           if (ev.type === 'chunk') {
             const lines = ev.text.split('\n').map(l => l.trim()).filter(Boolean);
             if (lines.length > 0) setAnalystThought(lines[lines.length - 1]);
@@ -342,7 +347,7 @@ export function App({
 
           try {
             for await (const ev of scanAndVerify(
-              initial[i].path, repoPath, outputDir, researcherModel, qaModel, ac.signal,
+              initial[i].path, repoPath, outputDir, primaryModel, secondaryModel, ac.signal,
             )) {
               if (ev.type === 'chunk') {
                 const lines = ev.text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -495,7 +500,6 @@ export function App({
                     [{r.severity.toUpperCase().padEnd(8)}]
                   </Text>
                   <Text color={isSel ? 'white' : 'gray'}>{r.name}</Text>
-                  <Text color="gray" dimColor>— {r.file}</Text>
                 </Box>
               );
             })}
@@ -536,7 +540,7 @@ export function App({
   }
 
   const realTotal =
-    files.reduce((sum, f) => sum + (f.realFindings ?? 0), 0);
+    resumedFindings + files.reduce((sum, f) => sum + (f.realFindings ?? 0), 0);
   const processedCount = files.filter(f =>
     f.status === 'done' || f.status === 'skipped' || f.status === 'error',
   ).length;
@@ -557,8 +561,8 @@ export function App({
       <Box gap={2}>
         <Text bold color="cyan">Probus</Text>
         <Text color="gray">target: <Text color="white">{targetRepo}</Text></Text>
-        <Text color="gray">researcher: <Text color="white">{researcherModel}</Text></Text>
-        <Text color="gray">qa: <Text color="white">{qaModel}</Text></Text>
+        <Text color="gray">primary: <Text color="white">{primaryModel}</Text></Text>
+        <Text color="gray">secondary: <Text color="white">{secondaryModel}</Text></Text>
       </Box>
 
       {phase === 'analyst' && (

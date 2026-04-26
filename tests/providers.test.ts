@@ -61,19 +61,19 @@ describe('detectProvider', () => {
 describe('defaultModels', () => {
   it('returns openrouter defaults', () => {
     const d = defaultModels('openrouter');
-    expect(d.researcher).toBe('openrouter/qwen/qwen3.6-plus');
-    expect(d.qa).toBe('openrouter/anthropic/claude-opus-4.7');
+    expect(d.primary).toBe('openrouter/qwen/qwen3.6-plus');
+    expect(d.secondary).toBe('openrouter/deepseek/deepseek-v4-pro');
   });
 
   it('returns openai defaults', () => {
     const d = defaultModels('openai');
-    expect(d.researcher).toBe('openai/gpt-5.4-mini');
-    expect(d.qa).toBe('openai/gpt-5.4');
+    expect(d.primary).toBe('openai/gpt-5.4-mini');
+    expect(d.secondary).toBe('openai/gpt-5.4');
   });
 
   it('returns anthropic defaults', () => {
     const d = defaultModels('anthropic');
-    expect(d.researcher).toMatch(/^anthropic\//);
-    expect(d.qa).toMatch(/^anthropic\//);
+    expect(d.primary).toMatch(/^anthropic\//);
+    expect(d.secondary).toMatch(/^anthropic\//);
   });
 });

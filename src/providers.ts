@@ -55,31 +55,30 @@ export function detectProvider(env: NodeJS.ProcessEnv = process.env): KnownProvi
 }
 
 export interface ModelDefaults {
-  researcher: string;
-  qa: string;
+  primary: string;
+  secondary: string;
 }
 
 /**
- * Defaults per provider. Researcher is the per-file model (ran many times);
- * QA is the verifier (ran per verified finding).
+ * Defaults per provider. `primary` is the per-file model (ran many times);
+ * `secondary` is the verifier (ran per verified finding).
  */
 export function defaultModels(provider: KnownProvider): ModelDefaults {
   switch (provider) {
     case 'openrouter':
       return {
-        // researcher: 'openrouter/qwen/qwen3.6-plus',
-        researcher: 'openrouter/anthropic/claude-sonnet-4.6',
-        qa: 'openrouter/anthropic/claude-opus-4.7',
+        primary: 'openrouter/qwen/qwen3.6-plus',
+        secondary: 'openrouter/deepseek/deepseek-v4-pro',
       };
     case 'openai':
       return {
-        researcher: 'openai/gpt-5.4-mini',
-        qa: 'openai/gpt-5.4',
+        primary: 'openai/gpt-5.4-mini',
+        secondary: 'openai/gpt-5.4',
       };
     case 'anthropic':
       return {
-        researcher: 'anthropic/claude-sonnet-4-6',
-        qa: 'anthropic/claude-opus-4-7',
+        primary: 'anthropic/claude-sonnet-4-6',
+        secondary: 'anthropic/claude-opus-4-7',
       };
   }
 }

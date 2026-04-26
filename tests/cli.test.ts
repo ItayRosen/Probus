@@ -24,8 +24,8 @@ describe('parseArgs', () => {
     expect(parseArgs(['scan', '../repo'])).toEqual({
       kind: 'scan',
       repo: '../repo',
-      researcherModel: null,
-      qaModel: null,
+      primaryModel: null,
+      secondaryModel: null,
       effort: 'low',
       preferredProvider: null,
       parallel: 1,
@@ -54,29 +54,29 @@ describe('parseArgs', () => {
     expect(parseArgs(['scan', '../repo', '--parallel', '999']).kind).toBe('error');
   });
 
-  it('parses --researchModel / --qaModel flags', () => {
+  it('parses --primaryModel / --secondaryModel flags', () => {
     const r = parseArgs([
       'scan', '../repo',
-      '--researchModel', 'openai/gpt-5.4-mini',
-      '--qaModel', 'openai/gpt-5.4',
+      '--primaryModel', 'openai/gpt-5.4-mini',
+      '--secondaryModel', 'openai/gpt-5.4',
     ]);
     expect(r).toMatchObject({
       kind: 'scan',
-      researcherModel: 'openai/gpt-5.4-mini',
-      qaModel: 'openai/gpt-5.4',
+      primaryModel: 'openai/gpt-5.4-mini',
+      secondaryModel: 'openai/gpt-5.4',
     });
   });
 
-  it('accepts hyphenated --research-model / --qa-model aliases', () => {
+  it('accepts hyphenated --primary-model / --secondary-model aliases', () => {
     const r = parseArgs([
       'scan', '../repo',
-      '--research-model=openrouter/qwen/qwen3.6-plus',
-      '--qa-model=openrouter/anthropic/claude-opus-4.7',
+      '--primary-model=openrouter/qwen/qwen3.6-plus',
+      '--secondary-model=openrouter/anthropic/claude-opus-4.7',
     ]);
     expect(r).toMatchObject({
       kind: 'scan',
-      researcherModel: 'openrouter/qwen/qwen3.6-plus',
-      qaModel: 'openrouter/anthropic/claude-opus-4.7',
+      primaryModel: 'openrouter/qwen/qwen3.6-plus',
+      secondaryModel: 'openrouter/anthropic/claude-opus-4.7',
     });
   });
 
@@ -122,15 +122,15 @@ describe('resolveDefaults', () => {
   it('prefers openrouter when its key is set', () => {
     const r = resolveDefaults(null, { OPENROUTER_API_KEY: 'x', OPENAI_API_KEY: 'y' });
     expect(r?.provider).toBe('openrouter');
-    expect(r?.researcher).toMatch(/^openrouter\//);
-    expect(r?.qa).toMatch(/^openrouter\//);
+    expect(r?.primary).toMatch(/^openrouter\//);
+    expect(r?.secondary).toMatch(/^openrouter\//);
   });
 
   it('falls back to openai when only OPENAI_API_KEY is set', () => {
     const r = resolveDefaults(null, { OPENAI_API_KEY: 'y' });
     expect(r?.provider).toBe('openai');
-    expect(r?.researcher).toBe('openai/gpt-5.4-mini');
-    expect(r?.qa).toBe('openai/gpt-5.4');
+    expect(r?.primary).toBe('openai/gpt-5.4-mini');
+    expect(r?.secondary).toBe('openai/gpt-5.4');
   });
 
   it('honors explicit preferred provider even without env key', () => {

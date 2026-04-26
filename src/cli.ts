@@ -8,8 +8,8 @@ export type ParsedArgs =
   | {
       kind: 'scan';
       repo: string;
-      researcherModel: string | null; // null = pick default after key is available
-      qaModel: string | null;
+      primaryModel: string | null; // null = pick default after key is available
+      secondaryModel: string | null;
       effort: Effort;
       preferredProvider: KnownProvider | null; // from --provider or null = detect
       parallel: number; // how many files to scan concurrently (default 1)
@@ -28,8 +28,8 @@ export function parseArgs(rawArgs: string[]): ParsedArgs {
   }
 
   let effort: Effort = DEFAULT_EFFORT;
-  let researcherModel: string | null = null;
-  let qaModel: string | null = null;
+  let primaryModel: string | null = null;
+  let secondaryModel: string | null = null;
   let preferredProvider: KnownProvider | null = null;
   let parallel: number = DEFAULT_PARALLEL;
   const positional: string[] = [];
@@ -55,14 +55,14 @@ export function parseArgs(rawArgs: string[]): ParsedArgs {
       }
       effort = v as Effort;
       i = next;
-    } else if (a === '--researchModel' || a === '--research-model' || a.startsWith('--researchModel=') || a.startsWith('--research-model=')) {
-      const r = takeValue('--researchModel', i);
+    } else if (a === '--primaryModel' || a === '--primary-model' || a.startsWith('--primaryModel=') || a.startsWith('--primary-model=')) {
+      const r = takeValue('--primaryModel', i);
       if (typeof r === 'string') return { kind: 'error', message: r };
-      researcherModel = r[0]; i = r[1];
-    } else if (a === '--qaModel' || a === '--qa-model' || a.startsWith('--qaModel=') || a.startsWith('--qa-model=')) {
-      const r = takeValue('--qaModel', i);
+      primaryModel = r[0]; i = r[1];
+    } else if (a === '--secondaryModel' || a === '--secondary-model' || a.startsWith('--secondaryModel=') || a.startsWith('--secondary-model=')) {
+      const r = takeValue('--secondaryModel', i);
       if (typeof r === 'string') return { kind: 'error', message: r };
-      qaModel = r[0]; i = r[1];
+      secondaryModel = r[0]; i = r[1];
     } else if (a === '--provider' || a.startsWith('--provider=')) {
       const r = takeValue('--provider', i);
       if (typeof r === 'string') return { kind: 'error', message: r };
@@ -98,9 +98,9 @@ export function parseArgs(rawArgs: string[]): ParsedArgs {
 
   if (cmd === 'scan') {
     if (!repo) {
-      return { kind: 'error', message: 'Usage: probus scan <repo-path> [--effort ...] [--researchModel ...] [--qaModel ...]' };
+      return { kind: 'error', message: 'Usage: probus scan <repo-path> [--effort ...] [--primaryModel ...] [--secondaryModel ...]' };
     }
-    return { kind: 'scan', repo, researcherModel, qaModel, effort, preferredProvider, parallel };
+    return { kind: 'scan', repo, primaryModel, secondaryModel, effort, preferredProvider, parallel };
   }
 
   return { kind: 'error', message: `Unknown command: ${cmd ?? '(missing)'}` };
@@ -110,20 +110,20 @@ export function parseArgs(rawArgs: string[]): ParsedArgs {
 export function resolveDefaults(
   preferred: KnownProvider | null,
   env: NodeJS.ProcessEnv = process.env,
-): { provider: KnownProvider | null; researcher: string; qa: string } | null {
+): { provider: KnownProvider | null; primary: string; secondary: string } | null {
   const provider = preferred ?? detectProvider(env);
   if (!provider) return null;
   const d = defaultModels(provider);
-  return { provider, researcher: d.researcher, qa: d.qa };
+  return { provider, primary: d.primary, secondary: d.secondary };
 }
 
 export const HELP_TEXT = [
   'Usage:',
-  '  probus scan <repo-path> [--effort low|medium|high] [--researchModel slug] [--qaModel slug] [--provider openai|openrouter|anthropic] [--parallel N]',
+  '  probus scan <repo-path> [--effort low|medium|high] [--primaryModel slug] [--secondaryModel slug] [--provider openai|openrouter|anthropic] [--parallel N]',
   '  probus view <repo-path>',
   '',
   'Model slugs are "<providerID>/<modelID>", e.g. "openai/gpt-5.4" or',
-  '"openrouter/qwen/qwen3.6-plus". If --researchModel / --qaModel are',
+  '"openrouter/qwen/qwen3.6-plus". If --primaryModel / --secondaryModel are',
   'omitted we pick defaults based on which *_API_KEY is set (openrouter',
   'beats openai beats anthropic). Use --provider to force a pick when',
   'multiple keys are available.',
@@ -131,5 +131,5 @@ export const HELP_TEXT = [
   'Effort controls how many files the analyst targets:',
   '  low (default) ≈ 50 files   medium ≈ 100   high ≈ 500',
   '',
-  '--parallel N runs N files through researcher+QA concurrently (default 1, max 16).',
+  '--parallel N runs N files through primary+secondary concurrently (default 1, max 16).',
 ].join('\n');

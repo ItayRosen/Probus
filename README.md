@@ -1,6 +1,6 @@
 # probus
 
-> Agentic security scanner for source-code repos. Three specialised LLM agents — an analyst, a researcher, and a QA — collaborate to find, verify, and write up vulnerabilities. Live terminal UI. Any model OpenRouter supports.
+> Open-source AI vulnerability scanner powered by open models.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](.nvmrc)
@@ -10,26 +10,80 @@
 
 ---
 
+I created this project after finding (and reporting) vulnerabilities in my chain of dependencies (n8n, AI sdk, langraphjs and more), to help other developers better secure their code before a malicious actor does.
+
 ## What it does
 
-probus points three agents at a git repo:
+Probus harnesses 3 agents that:
 
-1. **Analyst** — reads the codebase, picks ~50–500 files worth scanning (entry points, third-party surface, dangerous sinks).
-2. **Researcher** — opens each file, digs through its imports and callers, and writes raw findings as structured JSON.
-3. **QA** — independently verifies each finding against the source, discards false positives, and writes a Markdown report for every real vulnerability.
-
-Output lands in `output/<repo-slug>/` — one JSON per file, one Markdown report per verified finding, and a per-file debug log so you can audit what the agents actually did.
-
-Everything runs through the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk), pointed at [OpenRouter](https://openrouter.ai) so you can mix and match Claude, Qwen, Kimi, or any other supported model.
+- [Analyst] Analyze the codebase and pick key files (e.g. entry points, third-party surface, dangerous sinks).
+- [Researcher] Scan each file, dig through its chains of calls, and write raw findings.
+- [QA] Independently verify each finding, make sure it has a real attack vector, and write a report for every real vulnerability.
 
 ## Quick start
 
 ```bash
-npm install -g probus    # or: npx probus ...
+npm install -g probus
 probus scan ./my-app
 ```
 
-First run will prompt for your OpenRouter API key and save it to `~/.probus/.env` (chmod 600).
+## Model providers
+
+Probus runs most (cost) effectively with open models using [OpenRouter](https://openrouter.ai). It is still possible however to use other providers, such as [OpenAI](https://openai.com) or [Anthropic](https://anthropic.com), however the cost will be higher.
+
+## Usage
+
+```text
+probus scan <repo-path> [--effort low|medium|high] [--primaryModel slug] [--secondaryModel slug] [--provider openai|openrouter|anthropic]
+probus view <repo-path>
+```
+
+### Commands
+
+| Command | What it does                                                       |
+| ------- | ------------------------------------------------------------------ |
+| `scan`  | Full pipeline: analyst → research → qa.                            |
+| `view`  | Skip straight to the report browser for a previously-scanned repo. |
+
+### `--effort`
+
+Controls how many files the analyst targets:
+
+| Effort          | Files (approx) |
+| --------------- | -------------- |
+| `low` (default) | 50             |
+| `medium`        | 100            |
+| `high`          | 500            |
+
+### `--primaryModel` / `--secondaryModel`
+
+Pass models as `<provider>/<model>` slugs via `--primaryModel` and `--secondaryModel`:
+
+```bash
+probus scan ./app --effort medium \
+  --primaryModel anthropic/claude-sonnet-4.6 \
+  --secondaryModel anthropic/claude-opus-4.7
+```
+
+Defaults are picked from whichever `*_API_KEY` env var is set
+(precedence: `OPENROUTER_API_KEY` → `OPENAI_API_KEY` → `ANTHROPIC_API_KEY`);
+use `--provider` to override when multiple keys are present.
+
+| Provider     | Primary default                | Secondary default                     |
+| ------------ | ------------------------------ | ------------------------------------- |
+| `openrouter` | `openrouter/qwen/qwen3.6-plus` | `openrouter/deepseek/deepseek-v4-pro` |
+| `openai`     | `openai/gpt-5.4-mini`          | `openai/gpt-5.4`                      |
+| `anthropic`  | `anthropic/claude-sonnet-4-6`  | `anthropic/claude-opus-4-7`           |
+
+## Cost
+
+Cost is distributed between two models. The primary model takes 90% of token consumption and should be cheap & less intelligent (e.g. qwen 3.6, gpt-5.4-mini, sonnet-4.6). The secondary model takes 10% of token consumption and should be more expensive & more intelligent (e.g. deepseek-v4-pro, gpt-5.4, opus-4.7). Processing each file costs about 1M input tokens and using the open models cost around $0.5. When using Anthropic provider, cost jumps by ~10x. When using openai, cost jumps by ~2.5x.
+
+## Contributing
+
+PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for dev setup, scripts, and conventions.
+
+## Development
 
 ### Local dev
 
@@ -41,64 +95,21 @@ export OPENROUTER_API_KEY=sk-or-v1-...
 npm run dev -- scan ../some-repo
 ```
 
-## Usage
+### Architecture
 
-```text
-probus scan <repo-path> [--effort low|medium|high] [--researchModel slug] [--qaModel slug] [--provider openai|openrouter|anthropic]
-probus view <repo-path>
+```
+┌────────────┐   files[]   ┌──────────────┐  findings[]  ┌───────────┐
+│  Analyst   │────────────▶│   Primary    │─────────────▶│ Secondary │
+│  (1 call)  │             │  (per file)  │              │ (per file)│
+└────────────┘             └──────────────┘              └─────┬─────┘
+                                                               │
+                                                               ▼
+                                                       reports/*.md
 ```
 
-### Commands
+All three run as isolated `query()` sessions through the Claude Agent SDK, each with its own filesystem sandbox scoped to the repo being scanned.
 
-| Command  | What it does                                                             |
-| -------- | ------------------------------------------------------------------------ |
-| `scan`   | Full pipeline: analyst → researcher → QA, then drops you into the browser. |
-| `view`   | Skip straight to the report browser for a previously-scanned repo.         |
-
-### `--effort`
-
-Controls how many files the analyst targets:
-
-| Effort        | Files (approx) |
-| ------------- | -------------- |
-| `low` (default) | 50             |
-| `medium`        | 100            |
-| `high`          | 500            |
-
-### Models
-
-Pass models as `<provider>/<model>` slugs via `--researchModel` and `--qaModel`:
-
-```bash
-probus scan ./app --effort medium \
-  --researchModel anthropic/claude-sonnet-4.6 \
-  --qaModel anthropic/claude-opus-4.7
-```
-
-Defaults are picked from whichever `*_API_KEY` env var is set
-(precedence: `OPENROUTER_API_KEY` → `OPENAI_API_KEY` → `ANTHROPIC_API_KEY`);
-use `--provider` to override when multiple keys are present.
-
-| Provider     | Researcher default            | QA default                       |
-| ------------ | ----------------------------- | -------------------------------- |
-| `openrouter` | `openrouter/qwen/qwen3.6-plus` | `openrouter/anthropic/claude-opus-4.7` |
-| `openai`     | `openai/gpt-5.4-mini`          | `openai/gpt-5.4`                       |
-| `anthropic`  | `anthropic/claude-sonnet-4.6`  | `anthropic/claude-opus-4.7`            |
-
-## Keybindings
-
-**Scanning phase**
-- `↑` / `↓` / `j` / `k` — scroll the file list
-- `s` — skip the current file
-- `q` — quit
-
-**Browser phase**
-- `↑` / `↓` / `j` / `k` — navigate findings (sorted by severity)
-- `↵` / `→` / `l` — open the Markdown report
-- `←` / `h` / `Esc` — collapse
-- `q` — quit
-
-## Output layout
+### Output layout
 
 ```
 output/<repo-slug>/
@@ -113,40 +124,6 @@ output/<repo-slug>/
 ```
 
 `<repo-slug>` is `<basename>-<sha1(abspath)[:8]>` so the same repo never collides with another.
-
-## Architecture
-
-```
-┌────────────┐   files[]   ┌──────────────┐  findings[]  ┌──────────┐
-│  Analyst   │────────────▶│  Researcher  │─────────────▶│   QA     │
-│  (1 call)  │             │  (per file)  │              │ (per file)│
-└────────────┘             └──────────────┘              └─────┬────┘
-                                                               │
-                                                               ▼
-                                                       reports/*.md
-```
-
-All three run as isolated `query()` sessions through the Claude Agent SDK, each with its own filesystem sandbox scoped to the repo being scanned.
-
-## Configuration
-
-probus reads, in order:
-1. `process.env.OPENROUTER_API_KEY`
-2. `~/.probus/.env`
-3. Interactive prompt (scan mode only) — saves to `~/.probus/.env`
-
-## Safety
-
-probus is an agentic tool that:
-- Reads the entire repo you point at (sent in chunks to the model provider).
-- Executes shell/fs tool calls inside the agent sandbox.
-- Writes reports to the host filesystem.
-
-**Do not scan third-party repos you don't own or have permission to audit.** Review OpenRouter's (or your chosen provider's) data policy before scanning repos with secrets or PII. See [SECURITY.md](./SECURITY.md).
-
-## Contributing
-
-PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for dev setup, scripts, and conventions.
 
 ## License
 

@@ -24,14 +24,14 @@ switch (parsed.kind) {
     console.error(parsed.message);
     process.exit(1);
   case 'view':
-    render(<App targetRepo={parsed.repo} researcherModel={null} qaModel={null} mode="view" />);
+    render(<App targetRepo={parsed.repo} primaryModel={null} secondaryModel={null} mode="view" />);
     break;
   case 'scan':
     render(
       <App
         targetRepo={parsed.repo}
-        researcherModel={parsed.researcherModel}
-        qaModel={parsed.qaModel}
+        primaryModel={parsed.primaryModel}
+        secondaryModel={parsed.secondaryModel}
         effort={parsed.effort}
         preferredProvider={parsed.preferredProvider}
         parallel={parsed.parallel}
