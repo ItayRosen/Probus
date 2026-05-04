@@ -213,7 +213,7 @@ Paths must be relative to the repo root (${safeRepo}). Do NOT include absolute p
 function researcherPrompt(absFile: string, findingsJsonPath: string): string {
   const safeFile = sanitizePath(absFile);
   const safePath = sanitizePath(findingsJsonPath);
-  return `You are playing in a CTF. Find vulnerabilities. Start at ${safeFile}.
+  return `You are playing in a CTF. Find high / critical vulnerabilities. Start at ${safeFile}.
 
 <output>
 Write your findings to ${safePath} as JSON with this exact shape:
@@ -222,7 +222,7 @@ Write your findings to ${safePath} as JSON with this exact shape:
   "findings": [
     {
       "name": "<short vulnerability name>",
-      "severity": "critical" | "high" | "medium" | "low",
+      "severity": "critical" | "high",
       "description": "<1–3 sentences. Include the specific file path(s).>"
     }
   ]
@@ -245,7 +245,6 @@ A finding is REAL (verified=true) only if ALL of:
 - There is a concrete attacker-reachable code path (taint from untrusted input to the sink)
 - The described impact matches what the code actually allows
 - No runtime check, framework guard, or upstream validation prevents it
-- The described file paths and line numbers exist and match
 
 A finding is a FALSE POSITIVE (verified=false) if any of:
 - The code path is dead, unreachable, or gated behind authentication/validation the researcher missed
@@ -253,10 +252,12 @@ A finding is a FALSE POSITIVE (verified=false) if any of:
 - Required preconditions are unrealistic (developer-controlled config, not attacker-controlled)
 - The cited lines don't actually contain the described bug
 - The finding duplicates another finding in the same file
+- The "vulnerability" is a documented behavior / feature in the docs.
+- Requires exposing internal APIs to external input — assume those are only called on trusted data. 
 </criteria>
 
 <method>
-Re-read ${safeFile} and any other files referenced in each finding. Verify the taint path end-to-end. Be strict: when in doubt, mark as false positive with a clear reason.
+Re-read ${safeFile} and any other files referenced in each finding. Verify the taint path end-to-end. Be strict: when in doubt, mark as false positive with a clear reason. If it's an open source library, check against its docs.
 </method>
 
 <output>

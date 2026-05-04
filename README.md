@@ -10,7 +10,7 @@
 
 ---
 
-I created this project after finding (and reporting) vulnerabilities in my chain of dependencies (n8n, AI sdk, langraphjs and more), to help other developers better secure their code before a malicious actor takes advantage.
+Probus started as an internal supply chain security scanning tool that proved itself extremely efficient by finding vulnerabilities in top open source packages (e.g. n8n, AI sdk, langraphjs and more). It is now open-source to help developers better secure their codebase & supply chain. Probus' edge lies in its ability to scale its scanning capabilities with open models (by using OpenRouter).
 
 ## What it does
 
@@ -84,11 +84,11 @@ Probus splits work between two models so you only pay premium rates where it mat
 
 Each file consumes roughly **1M input tokens**. Approximate per-file cost by provider:
 
-| Provider     | Cost / file | vs. open models |
-| ------------ | ----------- | --------------- |
-| `openrouter` (open models) | ~$0.50  | 1× (baseline)   |
-| `openai`                   | ~$1.25  | ~2.5×           |
-| `anthropic`                | ~$5.00  | ~10×            |
+| Provider                   | Cost / file | vs. open models |
+| -------------------------- | ----------- | --------------- |
+| `openrouter` (open models) | ~$0.50      | 1× (baseline)   |
+| `openai`                   | ~$1.25      | ~2.5×           |
+| `anthropic`                | ~$5.00      | ~10×            |
 
 ## Contributing
 

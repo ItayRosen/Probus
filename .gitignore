@@ -9,3 +9,6 @@ coverage/
 *.log
 .vscode/
 .idea/
+
+# Local Reddit promo scripts (not for distribution)
+scripts/post-reddit-comments.sh
