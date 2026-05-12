@@ -14,20 +14,23 @@ npm install
 ## Run it locally
 
 ```bash
-export OPENROUTER_API_KEY=sk-or-v1-...
-npm run dev -- scan ../some-repo
+npm run build:web   # build the React UI once
+npm run dev         # boots Express + opens browser to localhost:PORT
 ```
 
-Or `npm run dev -- view ../some-repo` to browse prior findings.
+The web UI handles everything: provider/key setup, picking a repo, starting and watching scans, and browsing past reports.
 
 ## Scripts
 
-| Command           | What it does                                        |
-| ----------------- | --------------------------------------------------- |
-| `npm run dev`     | Run the CLI with `tsx` (no build step)              |
-| `npm run build`   | Compile TypeScript to `dist/`                       |
-| `npm test`        | Run the `vitest` suite                              |
-| `npm run typecheck` | `tsc --noEmit` — CI runs this                      |
+| Command             | What it does                                                              |
+| ------------------- | ------------------------------------------------------------------------- |
+| `npm run build`     | Build the web app (Vite) and the server (TypeScript) — required once     |
+| `npm run build:web` | Build only the React web UI (`web/` → `dist/web/`)                       |
+| `npm run build:server` | Build only the server (`src/` → `dist/`)                              |
+| `npm run dev`       | Run the CLI with `tsx` (requires `build:web` to have been run once)      |
+| `npm run dev:web`   | Vite dev server on :5173 with HMR (proxies `/api` to backend on :9091)   |
+| `npm test`          | Run the `vitest` suite                                                    |
+| `npm run typecheck` | `tsc --noEmit` — CI runs this                                            |
 
 ## Before opening a PR
 
@@ -39,19 +42,30 @@ Or `npm run dev -- view ../some-repo` to browse prior findings.
 ## Architecture sketch
 
 ```
-CLI (src/cli.ts + src/index.tsx)
+Launcher (src/cli.ts + src/index.ts)   — binds 127.0.0.1, opens browser
    │
    ▼
-Ink UI (src/ui/App.tsx) — phases: api-key → analyst → scanning → browse
+Express server (src/server/*)
+   ├─ /api/config, /api/keys          (provider list, save keys)
+   ├─ /api/validate-repo              (resolve user-typed paths)
+   ├─ /api/scans                       (GET = list past, POST = start)
+   ├─ /api/active                      ({ slug } of running scan, if any)
+   ├─ /api/scans/:slug                 (metadata + reports, live or past)
+   ├─ /api/scans/:slug/events          (SSE — live per-file events)
+   ├─ /api/scans/:slug/{abort,skip}
+   └─ /api/scans/:slug/reports[/:id]
    │
    ▼
-Pipeline (src/scanner.ts)
+React SPA (web/src/*) — Home → NewScan → ScanView (dashboard or reports)
+   │
+   ▼
+Pipeline (src/scanner.ts) — runAnalyst + scanAndVerify async generators
    ├─ Analyst   : picks files to inspect
    ├─ Researcher: raw findings per file
    └─ QA        : verifies + writes markdown reports
    │
    ▼
-Claude Agent SDK → OpenRouter (any supported model)
+Claude Agent SDK → OpenRouter / OpenAI / Anthropic
 ```
 
 Output lives in `output/<repo-slug>/` — findings JSON, markdown reports, per-file debug logs.

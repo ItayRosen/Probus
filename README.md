@@ -26,56 +26,52 @@ Probus harnesses 3 agents that:
 
 ```bash
 npm install -g probus
-probus scan ./my-app
+probus
 ```
+
+`probus` launches a local web server, opens your browser to it, and from there you:
+
+- pick a repo to scan,
+- enter / pick a model-provider API key,
+- watch a live dashboard of the analyst → researcher → QA pipeline,
+- and browse verified findings as polished markdown reports.
+
+No CLI flags, no scan/view subcommands — everything happens on the page. The only options are launcher flags:
+
+```text
+probus [--port <N>] [--no-open]
+```
+
+| Flag         | Default | What it does                                          |
+| ------------ | ------- | ----------------------------------------------------- |
+| `--port`     | random  | Pin the local server port (otherwise picks a free one) |
+| `--no-open`  | open    | Skip auto-opening the browser; just print the URL      |
 
 ## Model providers
 
 Probus runs most (cost) effectively with open models using [OpenRouter](https://openrouter.ai). It is still possible however to use other providers, such as [OpenAI](https://openai.com) or [Anthropic](https://anthropic.com), albeit with higher costs.
 
-## Usage
+You configure providers and keys directly in the web UI's **Settings** tab (or inline on the **New scan** screen). Keys are stored at `~/.probus/.env` (chmod 600) and never leave the machine.
 
-```text
-probus scan <repo-path> [--effort low|medium|high] [--primaryModel slug] [--secondaryModel slug] [--provider openai|openrouter|anthropic]
-probus view <repo-path>
-```
+### Defaults per provider
 
-### Commands
-
-| Command | What it does                                                       |
-| ------- | ------------------------------------------------------------------ |
-| `scan`  | Full pipeline: analyst → research → qa.                            |
-| `view`  | Skip straight to the report browser for a previously-scanned repo. |
-
-### `--effort`
-
-Controls how many files the analyst targets:
-
-| Effort          | Files (approx) |
-| --------------- | -------------- |
-| `low` (default) | 50             |
-| `medium`        | 100            |
-| `high`          | 500            |
-
-### `--primaryModel` / `--secondaryModel`
-
-Pass models as `<provider>/<model>` slugs via `--primaryModel` and `--secondaryModel`:
-
-```bash
-probus scan ./app --effort medium \
-  --primaryModel anthropic/claude-sonnet-4.6 \
-  --secondaryModel anthropic/claude-opus-4.7
-```
-
-Defaults are picked from whichever `*_API_KEY` env var is set
-(precedence: `OPENROUTER_API_KEY` → `OPENAI_API_KEY` → `ANTHROPIC_API_KEY`);
-use `--provider` to override when multiple keys are present.
+When you don't pass model overrides, these are the picks:
 
 | Provider     | Primary default                | Secondary default                     |
 | ------------ | ------------------------------ | ------------------------------------- |
 | `openrouter` | `openrouter/qwen/qwen3.6-plus` | `openrouter/deepseek/deepseek-v4-pro` |
 | `openai`     | `openai/gpt-5.4-mini`          | `openai/gpt-5.4`                      |
 | `anthropic`  | `anthropic/claude-sonnet-4-6`  | `anthropic/claude-opus-4-7`           |
+
+### Effort levels
+
+Each scan picks an effort level that caps the number of files the analyst targets:
+
+| Effort     | Files (approx) |
+| ---------- | -------------- |
+| `low`      | 50             |
+| `medium`   | 100            |
+| `high`     | 500            |
 
 ## Cost
 
@@ -104,8 +100,15 @@ PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for dev setup, scripts, an
 git clone https://github.com/ItayRosen/Probus
 cd probus
 nvm use && npm install
-export OPENROUTER_API_KEY=sk-or-v1-...
-npm run dev -- scan ../some-repo
+npm run build:web    # build the React UI once (re-run on web/ changes)
+npm run dev          # tsx-runs the server; opens browser to localhost:PORT
+```
+
+For UI iteration with HMR:
+
+```bash
+PROBUS_PORT=9091 npm run dev   # backend on pinned port :9091
+npm run dev:web                # in another terminal — Vite on :5173 with HMR, proxies /api → :9091
 ```
 
 ### Architecture

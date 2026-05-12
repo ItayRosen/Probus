@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parseArgs, resolveDefaults } from '../src/cli.js';
+import { parseArgs } from '../src/cli.js';
 
 describe('parseArgs', () => {
-  it('returns help on no args', () => {
-    expect(parseArgs([])).toEqual({ kind: 'help' });
+  it('returns run with defaults when no args are given', () => {
+    expect(parseArgs([])).toEqual({ kind: 'run', port: null, openBrowser: true });
   });
 
   it('returns help on --help / -h', () => {
@@ -11,130 +11,35 @@ describe('parseArgs', () => {
     expect(parseArgs(['-h']).kind).toBe('help');
   });
 
-  it('parses view with a repo', () => {
-    expect(parseArgs(['view', '../repo'])).toEqual({ kind: 'view', repo: '../repo' });
+  it('accepts --port 9091', () => {
+    const r = parseArgs(['--port', '9091']);
+    expect(r).toEqual({ kind: 'run', port: 9091, openBrowser: true });
   });
 
-  it('errors on view without a repo', () => {
-    const r = parseArgs(['view']);
-    expect(r.kind).toBe('error');
+  it('accepts --port=8080', () => {
+    const r = parseArgs(['--port=8080']);
+    expect(r).toEqual({ kind: 'run', port: 8080, openBrowser: true });
   });
 
-  it('parses scan with defaults (null models + no preferred provider)', () => {
-    expect(parseArgs(['scan', '../repo'])).toEqual({
-      kind: 'scan',
-      repo: '../repo',
-      primaryModel: null,
-      secondaryModel: null,
-      effort: 'low',
-      preferredProvider: null,
-      parallel: 1,
-    });
+  it('rejects --port outside 0..65535', () => {
+    expect(parseArgs(['--port', '70000']).kind).toBe('error');
+    expect(parseArgs(['--port', '-1']).kind).toBe('error');
+    expect(parseArgs(['--port', 'words']).kind).toBe('error');
   });
 
-  it('accepts --parallel 4', () => {
-    const r = parseArgs(['scan', '../repo', '--parallel', '4']);
-    expect(r.kind === 'scan' && r.parallel).toBe(4);
+  it('honors --no-open', () => {
+    const r = parseArgs(['--no-open']);
+    expect(r).toEqual({ kind: 'run', port: null, openBrowser: false });
   });
 
-  it('accepts --parallel=8', () => {
-    const r = parseArgs(['scan', '--parallel=8', '../repo']);
-    expect(r.kind === 'scan' && r.parallel).toBe(8);
+  it('honors --open after --no-open', () => {
+    const r = parseArgs(['--no-open', '--open']);
+    expect(r).toEqual({ kind: 'run', port: null, openBrowser: true });
   });
 
-  it('rejects --parallel 0', () => {
-    expect(parseArgs(['scan', '../repo', '--parallel', '0']).kind).toBe('error');
-  });
-
-  it('rejects --parallel non-integer', () => {
-    expect(parseArgs(['scan', '../repo', '--parallel', 'lots']).kind).toBe('error');
-  });
-
-  it('rejects --parallel above max', () => {
-    expect(parseArgs(['scan', '../repo', '--parallel', '999']).kind).toBe('error');
-  });
-
-  it('parses --primaryModel / --secondaryModel flags', () => {
-    const r = parseArgs([
-      'scan', '../repo',
-      '--primaryModel', 'openai/gpt-5.4-mini',
-      '--secondaryModel', 'openai/gpt-5.4',
-    ]);
-    expect(r).toMatchObject({
-      kind: 'scan',
-      primaryModel: 'openai/gpt-5.4-mini',
-      secondaryModel: 'openai/gpt-5.4',
-    });
-  });
-
-  it('accepts hyphenated --primary-model / --secondary-model aliases', () => {
-    const r = parseArgs([
-      'scan', '../repo',
-      '--primary-model=openrouter/qwen/qwen3.6-plus',
-      '--secondary-model=openrouter/anthropic/claude-opus-4.7',
-    ]);
-    expect(r).toMatchObject({
-      kind: 'scan',
-      primaryModel: 'openrouter/qwen/qwen3.6-plus',
-      secondaryModel: 'openrouter/anthropic/claude-opus-4.7',
-    });
-  });
-
-  it('accepts --provider openai', () => {
-    const r = parseArgs(['scan', '../repo', '--provider', 'openai']);
-    expect(r.kind === 'scan' && r.preferredProvider).toBe('openai');
-  });
-
-  it('rejects invalid --provider', () => {
-    const r = parseArgs(['scan', '../repo', '--provider', 'cohere']);
-    expect(r.kind).toBe('error');
-  });
-
-  it('accepts --effort medium', () => {
-    const r = parseArgs(['scan', '../repo', '--effort', 'medium']);
-    expect(r.kind === 'scan' && r.effort).toBe('medium');
-  });
-
-  it('accepts --effort=high', () => {
-    const r = parseArgs(['scan', '--effort=high', '../repo']);
-    expect(r.kind === 'scan' && r.effort).toBe('high');
-  });
-
-  it('rejects invalid --effort', () => {
-    const r = parseArgs(['scan', '../repo', '--effort', 'insane']);
-    expect(r.kind).toBe('error');
-  });
-
-  it('rejects unknown command', () => {
-    expect(parseArgs(['fly']).kind).toBe('error');
-  });
-
-  it('rejects unknown flag', () => {
-    expect(parseArgs(['scan', '../repo', '--frobnicate']).kind).toBe('error');
-  });
-});
-
-describe('resolveDefaults', () => {
-  it('returns null when no key is set and no preferred provider', () => {
-    expect(resolveDefaults(null, {})).toBeNull();
-  });
-
-  it('prefers openrouter when its key is set', () => {
-    const r = resolveDefaults(null, { OPENROUTER_API_KEY: 'x', OPENAI_API_KEY: 'y' });
-    expect(r?.provider).toBe('openrouter');
-    expect(r?.primary).toMatch(/^openrouter\//);
-    expect(r?.secondary).toMatch(/^openrouter\//);
-  });
-
-  it('falls back to openai when only OPENAI_API_KEY is set', () => {
-    const r = resolveDefaults(null, { OPENAI_API_KEY: 'y' });
-    expect(r?.provider).toBe('openai');
-    expect(r?.primary).toBe('openai/gpt-5.4-mini');
-    expect(r?.secondary).toBe('openai/gpt-5.4');
-  });
-
-  it('honors explicit preferred provider even without env key', () => {
-    const r = resolveDefaults('anthropic', {});
-    expect(r?.provider).toBe('anthropic');
+  it('rejects unknown args (including the old scan/view subcommands)', () => {
+    expect(parseArgs(['scan']).kind).toBe('error');
+    expect(parseArgs(['view', '../repo']).kind).toBe('error');
+    expect(parseArgs(['--frobnicate']).kind).toBe('error');
   });
 });
