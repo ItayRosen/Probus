@@ -14,21 +14,31 @@ npm install
 ## Run it locally
 
 ```bash
-npm run build:web   # build the React UI once
-npm run dev         # boots Express + opens browser to localhost:PORT
+npm run dev
 ```
 
+That's the whole loop:
+- backend hot-reloads via `tsx watch` when `src/` changes,
+- frontend hot-reloads via Vite middleware when `web/` changes,
+- both share port `:9091`, so your browser tab survives restarts.
+
 The web UI handles everything: provider/key setup, picking a repo, starting and watching scans, and browsing past reports.
+
+To run a production-mode build locally:
+
+```bash
+npm run build && npm start
+```
 
 ## Scripts
 
 | Command             | What it does                                                              |
 | ------------------- | ------------------------------------------------------------------------- |
-| `npm run build`     | Build the web app (Vite) and the server (TypeScript) — required once     |
+| `npm run dev`       | One-shot dev: tsx-watch for `src/`, Vite middleware HMR for `web/`, :9091|
+| `npm run build`     | Build the web app (Vite) and the server (TypeScript) for production       |
 | `npm run build:web` | Build only the React web UI (`web/` → `dist/web/`)                       |
 | `npm run build:server` | Build only the server (`src/` → `dist/`)                              |
-| `npm run dev`       | Run the CLI with `tsx` (requires `build:web` to have been run once)      |
-| `npm run dev:web`   | Vite dev server on :5173 with HMR (proxies `/api` to backend on :9091)   |
+| `npm start`         | Run the prebuilt server (serves `dist/web/` statically)                   |
 | `npm test`          | Run the `vitest` suite                                                    |
 | `npm run typecheck` | `tsc --noEmit` — CI runs this                                            |
 

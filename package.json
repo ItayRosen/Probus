@@ -37,8 +37,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "dev:web": "vite --config web/vite.config.ts",
+    "dev": "PROBUS_DEV=1 PROBUS_PORT=9091 tsx watch --clear-screen=false --ignore './web/**' --ignore './dist/**' --ignore './output/**' src/index.ts",
+    "dev:prod": "tsx src/index.ts",
     "build": "npm run build:web && npm run build:server",
     "build:web": "vite build --config web/vite.config.ts",
     "build:server": "tsc && chmod +x dist/index.js",

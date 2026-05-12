@@ -100,15 +100,15 @@ PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for dev setup, scripts, an
 git clone https://github.com/ItayRosen/Probus
 cd probus
 nvm use && npm install
-npm run build:web    # build the React UI once (re-run on web/ changes)
-npm run dev          # tsx-runs the server; opens browser to localhost:PORT
+npm run dev          # one command: Vite HMR for web/, tsx-watch reload for src/
 ```
 
-For UI iteration with HMR:
+`npm run dev` boots the server on `:9091` in dev mode — backend changes hot-reload via `tsx watch`, frontend changes hot-reload via Vite middleware. No build step needed during iteration.
+
+For a production-mode local run (serving the prebuilt bundle from `dist/web`):
 
 ```bash
-PROBUS_PORT=9091 npm run dev   # backend on pinned port :9091
-npm run dev:web                # in another terminal — Vite on :5173 with HMR, proxies /api → :9091
+npm run build && npm start
 ```
 
 ### Architecture

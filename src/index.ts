@@ -32,7 +32,8 @@ async function main(): Promise<void> {
       console.error(parsed.message);
       process.exit(1);
     case 'run': {
-      if (!existsSync(path.join(WEB_DIR, 'index.html'))) {
+      const devMode = process.env.PROBUS_DEV === '1';
+      if (!devMode && !existsSync(path.join(WEB_DIR, 'index.html'))) {
         console.error(
           `\n  Probus web bundle not found at ${WEB_DIR}.\n` +
           `  Run \`npm run build\` (or \`npm run build:web\`) and try again.\n`,
