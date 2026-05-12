@@ -200,6 +200,21 @@ Exclude:
 - Test files (*.test.*, *.spec.*, __tests__/)
 - Docs, fixtures, examples, generated code
 - Pure type definitions, build config, lockfiles, assets
+- Files outside of security policy scope (if available)
+
+Good examples:
+- Authentication and session code
+- Authorization / access-control logic
+- Route/controller/API entrypoints
+- Input validation and parsing
+- Database query code
+- File upload, import, export, and download code
+- Code that makes outbound HTTP requests
+- Deserialization, templating, eval, shell execution
+- Payment, billing, credits, and entitlement logic
+- Admin/internal/debug/dev tooling
+- Secrets and configuration
+- CORS, CSRF, cookies, and headers
 </task>
 
 <output>
@@ -238,7 +253,7 @@ function qaPrompt(absFile: string, findingsJsonPath: string, reportsDirPath: str
   const safePath = sanitizePath(findingsJsonPath);
   const safeReportsDir = sanitizePath(reportsDirPath);
   const safeSlug = sanitizePath(reportSlug);
-  return `You are a senior security QA reviewer. Verify each finding in ${safePath} against the actual source code.
+  return `You are a senior security QA reviewer. Verify each finding in ${safePath} against the actual source code. Review the security policy first (if available).
 
 <criteria>
 A finding is REAL (verified=true) only if ALL of:
@@ -254,6 +269,7 @@ A finding is a FALSE POSITIVE (verified=false) if any of:
 - The finding duplicates another finding in the same file
 - The "vulnerability" is a documented behavior / feature in the docs.
 - Requires exposing internal APIs to external input — assume those are only called on trusted data. 
+- There's a security policy and the finding is not in the scope of the policy.
 </criteria>
 
 <method>
