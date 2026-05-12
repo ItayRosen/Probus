@@ -261,6 +261,12 @@ export class ScanRunner {
 
     let cursor = 0;
     const runOne = async (i: number): Promise<void> => {
+      // If the whole scan was aborted between cursor++ and now, don't even
+      // open the per-file SDK session — just mark it skipped.
+      if (this.rootAbort?.signal.aborted) {
+        this.updateFile(i, { status: 'skipped' });
+        return;
+      }
       const ac = new AbortController();
       this.fileAborts.set(i, ac);
       let finalStatus: FileStatus = 'done';
@@ -312,6 +318,10 @@ export class ScanRunner {
 
     const worker = async (): Promise<void> => {
       while (true) {
+        // Abort-all stops the pool from claiming further files. Per-file
+        // skip doesn't touch rootAbort, so single-file skip still advances
+        // the worker to the next file normally.
+        if (this.rootAbort?.signal.aborted) return;
         const i = cursor++;
         if (i >= initial.length) return;
         if (initial[i].status === 'skipped') continue;
