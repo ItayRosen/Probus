@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api.ts';
 import type { ConfigPayload, KnownProvider, ValidateRepoResponse } from '../types.ts';
+import { BrowsePicker } from './BrowsePicker.tsx';
 
 interface Props {
   config: ConfigPayload | null;
@@ -30,6 +31,7 @@ export function NewScan({ config, navigate, onKeySaved }: Props) {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Seed provider from server-detected one when config loads.
   useEffect(() => {
@@ -118,14 +120,23 @@ export function NewScan({ config, navigate, onKeySaved }: Props) {
           </div>
           <div>
             <label className="label">Repo path</label>
-            <input
-              className="input"
-              placeholder="/Users/you/code/my-app  or  ~/code/my-app"
-              value={repoPath}
-              onChange={e => setRepoPath(e.target.value)}
-              autoFocus
-              spellCheck={false}
-            />
+            <div className="row" style={{ gap: 8 }}>
+              <input
+                className="input"
+                placeholder="/Users/you/code/my-app  or  ~/code/my-app"
+                value={repoPath}
+                onChange={e => setRepoPath(e.target.value)}
+                autoFocus
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => setPickerOpen(true)}
+                title="Browse the filesystem"
+                style={{ whiteSpace: 'nowrap' }}
+              >Browse…</button>
+            </div>
             {validation && 'ok' in validation && (
               <div className="path-hint ok">
                 ✓ {validation.ok.absolutePath}
@@ -285,6 +296,15 @@ export function NewScan({ config, navigate, onKeySaved }: Props) {
           {submitting ? 'Starting…' : 'Start scan →'}
         </button>
       </div>
+
+      {pickerOpen && (
+        <BrowsePicker
+          initialPath={validRepo?.absolutePath ?? repoPath ?? config?.home ?? null}
+          homeHint={config?.home}
+          onCancel={() => setPickerOpen(false)}
+          onPick={(p) => { setRepoPath(p); setPickerOpen(false); }}
+        />
+      )}
     </div>
   );
 }

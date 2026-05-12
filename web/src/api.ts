@@ -2,6 +2,8 @@
 
 import type {
   ConfigPayload,
+  FsListResponse,
+  FsRootsResponse,
   KnownProvider,
   PastScanSummary,
   ReportSummary,
@@ -40,6 +42,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ path }),
     }),
+
+  fsRoots: () => json<FsRootsResponse>('/api/fs/roots'),
+  fsList: (path?: string) =>
+    json<FsListResponse>(
+      path
+        ? `/api/fs/list?path=${encodeURIComponent(path)}`
+        : '/api/fs/list',
+    ),
 
   listScans: () => json<{ scans: PastScanSummary[]; activeSlug: string | null }>('/api/scans'),
   active: () => json<{ slug: string | null; isRunning: boolean }>('/api/active'),

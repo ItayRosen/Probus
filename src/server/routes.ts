@@ -2,9 +2,11 @@
 //
 // The CLI no longer takes a target repo — everything is driven from the page.
 //
-//   GET    /api/config            — provider list + key state + env file path
+//   GET    /api/config            — provider list + key state + env file path + home/cwd
 //   POST   /api/keys              — persist a provider API key
 //   POST   /api/validate-repo     — resolve and check a user-typed repo path
+//   GET    /api/fs/roots          — common quick-access dirs (home, Desktop, ...)
+//   GET    /api/fs/list?path=...  — list directories under a path (filesystem picker)
 //
 //   GET    /api/scans             — list every past scan (from output/)
 //   POST   /api/scans             — start a new scan (only one active at a time)
@@ -19,7 +21,8 @@
 //   GET    /api/scans/:slug/reports/:id
 
 import express from 'express';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {
   defaultModels,
@@ -52,6 +55,8 @@ function providersPayload() {
   return {
     detected,
     envFile: ENV_FILE,
+    home: os.homedir(),
+    cwd: process.cwd(),
     providers: ALL_PROVIDERS.map(id => ({
       id,
       label: PROVIDER_LABEL[id],
@@ -60,6 +65,50 @@ function providersPayload() {
       defaults: defaultModels(id),
     })),
   };
+}
+
+// ---------- filesystem picker helpers ----------
+
+function expandUser(p: string): string {
+  if (!p) return p;
+  if (p === '~') return os.homedir();
+  if (p.startsWith('~/') || p.startsWith('~\\')) return path.join(os.homedir(), p.slice(2));
+  return p;
+}
+
+const MAX_FS_ENTRIES = 500;
+
+function listDirSafe(absPath: string): {
+  entries: Array<{ name: string; isDir: boolean; hidden: boolean }>;
+  truncated: boolean;
+} {
+  let names: string[];
+  try {
+    names = readdirSync(absPath);
+  } catch (err) {
+    throw new Error(`Could not read directory: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  const truncated = names.length > MAX_FS_ENTRIES;
+  if (truncated) names = names.slice(0, MAX_FS_ENTRIES);
+
+  const entries: Array<{ name: string; isDir: boolean; hidden: boolean }> = [];
+  for (const name of names) {
+    let isDir = false;
+    try {
+      // statSync follows symlinks; lstatSync wouldn't. We want symlinked
+      // dirs to appear as dirs since that's the user's mental model.
+      const st = statSync(path.join(absPath, name));
+      isDir = st.isDirectory();
+    } catch {
+      // Permission denied / dangling symlink — skip.
+      continue;
+    }
+    entries.push({ name, isDir, hidden: name.startsWith('.') });
+  }
+  // Show directories first, then files.
+  entries.sort((a, b) => Number(b.isDir) - Number(a.isDir));
+  return { entries, truncated };
 }
 
 function isInside(parent: string, child: string): boolean {
@@ -100,13 +149,7 @@ export function createApiRouter(): express.Router {
     if (typeof raw !== 'string' || !raw.trim()) {
       return res.status(400).json({ error: 'Repo path is required' });
     }
-    // Expand ~ and resolve relative-to-cwd.
-    let p = raw.trim();
-    if (p.startsWith('~')) {
-      const home = process.env.HOME || process.env.USERPROFILE || '';
-      p = home + p.slice(1);
-    }
-    const abs = path.resolve(p);
+    const abs = path.resolve(expandUser(raw.trim()));
     if (!existsSync(abs)) return res.status(404).json({ error: `Path not found: ${abs}` });
     let st;
     try { st = statSync(abs); }
@@ -120,6 +163,57 @@ export function createApiRouter(): express.Router {
       outputDir,
       hasExistingScan: existsSync(outputDir),
     });
+  });
+
+  // ----- filesystem picker -----
+
+  router.get('/fs/roots', (_req, res) => {
+    const home = os.homedir();
+    const cwd = process.cwd();
+    // Build a list of well-known starting points, keeping only those that exist.
+    const candidates: Array<{ label: string; path: string }> = [
+      { label: 'Home',      path: home },
+      { label: 'Desktop',   path: path.join(home, 'Desktop') },
+      { label: 'Documents', path: path.join(home, 'Documents') },
+      { label: 'Downloads', path: path.join(home, 'Downloads') },
+      { label: 'Code',      path: path.join(home, 'Code') },
+      { label: 'Projects',  path: path.join(home, 'Projects') },
+      { label: 'Developer', path: path.join(home, 'Developer') },
+      { label: 'src',       path: path.join(home, 'src') },
+    ];
+    const roots = candidates.filter(c => {
+      try { return statSync(c.path).isDirectory(); } catch { return false; }
+    });
+    // Always include cwd if it's outside the home tree.
+    if (!cwd.startsWith(home + path.sep) && cwd !== home) {
+      roots.push({ label: 'Current dir', path: cwd });
+    }
+    res.json({ home, cwd, roots });
+  });
+
+  router.get('/fs/list', (req, res) => {
+    const raw = typeof req.query.path === 'string' ? req.query.path : '';
+    const target = raw ? path.resolve(expandUser(raw)) : os.homedir();
+    if (!existsSync(target)) return res.status(404).json({ error: `Path not found: ${target}` });
+    let st;
+    try { st = statSync(target); }
+    catch (err) { return res.status(403).json({ error: err instanceof Error ? err.message : String(err) }); }
+    if (!st.isDirectory()) return res.status(400).json({ error: 'Path is not a directory' });
+
+    try {
+      const { entries, truncated } = listDirSafe(target);
+      const parent = path.dirname(target);
+      res.json({
+        path: target,
+        parent: parent === target ? null : parent, // null at filesystem root
+        entries,
+        truncated,
+        slug: repoSlugFor(target),
+        hasExistingScan: existsSync(repoOutputDir(repoSlugFor(target))),
+      });
+    } catch (err) {
+      res.status(403).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   // ----- scans -----

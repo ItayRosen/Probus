@@ -68,7 +68,30 @@ export interface ProviderInfo {
 export interface ConfigPayload {
   detected: KnownProvider | null;
   envFile: string;
+  home: string;
+  cwd: string;
   providers: ProviderInfo[];
+}
+
+export interface FsEntry {
+  name: string;
+  isDir: boolean;
+  hidden: boolean;
+}
+
+export interface FsListResponse {
+  path: string;
+  parent: string | null;
+  entries: FsEntry[];
+  truncated: boolean;
+  slug: string;
+  hasExistingScan: boolean;
+}
+
+export interface FsRootsResponse {
+  home: string;
+  cwd: string;
+  roots: Array<{ label: string; path: string }>;
 }
 
 export interface ReportSummary {
