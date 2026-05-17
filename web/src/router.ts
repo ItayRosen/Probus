@@ -37,6 +37,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'new' }
   | { name: 'scan'; slug: string }
+  | { name: 'fix'; slug: string; reportId: string }
   | { name: 'settings' }
   | { name: 'not-found'; path: string };
 
@@ -45,6 +46,8 @@ export function matchRoute(rawPath: string): Route {
   if (path === '/' || path === '') return { name: 'home' };
   if (path === '/new') return { name: 'new' };
   if (path === '/settings') return { name: 'settings' };
+  const fix = path.match(/^\/scans\/([^/]+)\/fix\/([^/]+)$/);
+  if (fix) return { name: 'fix', slug: decodeURIComponent(fix[1]), reportId: decodeURIComponent(fix[2]) };
   const m = path.match(/^\/scans\/([^/]+)$/);
   if (m) return { name: 'scan', slug: decodeURIComponent(m[1]) };
   return { name: 'not-found', path };

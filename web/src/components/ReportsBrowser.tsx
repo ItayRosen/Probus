@@ -8,11 +8,12 @@ interface Props {
   repoPath?: string;
   reports: ReportSummary[];
   onRescan: () => void;
+  onFix?: (reportId: string) => void;
 }
 
 const SEV_ORDER: Severity[] = ['critical', 'high', 'medium', 'low'];
 
-export function ReportsBrowser({ slug, repoPath, reports, onRescan }: Props) {
+export function ReportsBrowser({ slug, repoPath, reports, onRescan, onFix }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(reports[0]?.reportId ?? null);
   const [markdown, setMarkdown] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -122,6 +123,16 @@ export function ReportsBrowser({ slug, repoPath, reports, onRescan }: Props) {
               <span className="panel-title" style={{ textTransform: 'none', letterSpacing: 0 }}>{selected.name}</span>
               <span className="spacer" />
               <span className="muted mono" style={{ fontSize: 11 }}>{shortPath(selected.file)}</span>
+              {onFix && (
+                <button
+                  className="btn primary"
+                  style={{ marginLeft: 10 }}
+                  onClick={() => onFix(selected.reportId)}
+                  title="Open chat with the agent to fix this and create a PR"
+                >
+                  Fix → PR
+                </button>
+              )}
             </div>
           )}
           <div style={{ overflowY: 'auto', flex: 1 }}>

@@ -94,6 +94,46 @@ export interface FsRootsResponse {
   roots: Array<{ label: string; path: string }>;
 }
 
+// ---- chat ----
+
+export type AssistantPart =
+  | { kind: 'text'; text: string }
+  | {
+      kind: 'tool';
+      id: string;
+      name: string;
+      input: unknown;
+      result?: { output: string; isError: boolean };
+    };
+
+export interface ChatTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  parts: AssistantPart[];
+  timestamp: number;
+}
+
+export type ChatStatus = 'idle' | 'streaming' | 'error';
+
+export type ChatEvent =
+  | { type: 'transcript'; turns: ChatTurn[]; status: ChatStatus }
+  | { type: 'turn-start'; turn: ChatTurn }
+  | { type: 'text-delta'; turnId: string; text: string }
+  | { type: 'tool-use'; turnId: string; tool: { id: string; name: string; input: unknown } }
+  | { type: 'tool-result'; turnId: string; toolId: string; result: { output: string; isError: boolean } }
+  | { type: 'turn-end'; turnId: string }
+  | { type: 'status'; status: ChatStatus }
+  | { type: 'tokens'; tokens: number }
+  | { type: 'error'; message: string };
+
+export interface GhStatus {
+  installed: boolean;
+  authed: boolean;
+  version?: string;
+  user?: string;
+  detail?: string;
+}
+
 export interface ReportSummary {
   file: string;
   name: string;

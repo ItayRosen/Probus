@@ -105,6 +105,7 @@ export function ScanView({ slug, navigate }: Props) {
       repoPath={detail.metadata?.repoPath}
       reports={reports ?? []}
       onRescan={() => navigate('/new')}
+      onFix={(reportId) => navigate(`/scans/${encodeURIComponent(slug)}/fix/${encodeURIComponent(reportId)}`)}
     />
   );
 }

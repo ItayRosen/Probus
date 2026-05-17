@@ -1,9 +1,13 @@
 // Thin fetch wrappers around /api endpoints + an SSE subscription helper.
 
 import type {
+  ChatEvent,
+  ChatStatus,
+  ChatTurn,
   ConfigPayload,
   FsListResponse,
   FsRootsResponse,
+  GhStatus,
   KnownProvider,
   PastScanSummary,
   ReportSummary,
@@ -51,6 +55,22 @@ export const api = {
         : '/api/fs/list',
     ),
 
+  ghStatus: () => json<GhStatus>('/api/preflight/gh'),
+
+  chatGet: (slug: string, id: string) =>
+    json<{ turns: ChatTurn[]; status: ChatStatus; exists: boolean }>(
+      `/api/chat/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`,
+    ),
+  chatSend: (slug: string, id: string, text: string) =>
+    json<{ ok: true }>(`/api/chat/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+  chatAbort: (slug: string, id: string) =>
+    json<{ ok: true }>(`/api/chat/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/abort`, { method: 'POST' }),
+  chatReset: (slug: string, id: string) =>
+    json<{ ok: true }>(`/api/chat/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/reset`, { method: 'POST' }),
+
   listScans: () => json<{ scans: PastScanSummary[]; activeSlug: string | null }>('/api/scans'),
   active: () => json<{ slug: string | null; isRunning: boolean }>('/api/active'),
 
@@ -96,6 +116,14 @@ export function subscribeEvents(slug: string, onEvent: (ev: ServerEvent) => void
     // Browser will auto-reconnect; nothing more to do. If the scan has
     // ended, the server returns 404 on reconnect and the EventSource will
     // keep retrying — callers should close it themselves when appropriate.
+  };
+  return () => es.close();
+}
+
+export function subscribeChat(slug: string, id: string, onEvent: (ev: ChatEvent) => void): () => void {
+  const es = new EventSource(`/api/chat/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/events`);
+  es.onmessage = e => {
+    try { onEvent(JSON.parse(e.data) as ChatEvent); } catch { /* ignore */ }
   };
   return () => es.close();
 }

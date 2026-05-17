@@ -1180,3 +1180,237 @@ body {
   align-items: center;
 }
 
+/* ---- chat view ---- */
+.chat-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+  align-items: stretch;
+  min-height: calc(100vh - 240px);
+}
+
+.chat-context {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-context-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 600px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-empty {
+  margin: 16px auto;
+  max-width: 460px;
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--text-3);
+}
+.chat-empty-title { color: var(--text-0); font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.chat-empty-sub { font-size: 13px; margin-bottom: 22px; line-height: 1.5; }
+.chat-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-suggestion {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  color: var(--text-1);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: all 80ms ease;
+}
+.chat-suggestion:hover { background: var(--bg-2); border-color: var(--border-accent); color: var(--text-0); }
+.chat-suggestion:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* message bubble */
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.msg-role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding-left: 2px;
+}
+.msg-body {
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-1);
+}
+.msg.user .msg-body {
+  background: rgba(34, 211, 238, 0.05);
+  border-color: rgba(34, 211, 238, 0.18);
+  color: var(--text-0);
+  align-self: flex-end;
+  max-width: 80%;
+}
+.msg.user .msg-role { align-self: flex-end; padding-right: 2px; padding-left: 0; }
+.msg.assistant .msg-body {
+  background: var(--bg-panel);
+  border-color: var(--border-1);
+}
+
+/* tighten markdown rendered inside a message bubble */
+.chat-md { padding: 0; max-width: none; font-size: 13.5px; line-height: 1.6; }
+.chat-md h1, .chat-md h2, .chat-md h3 { margin-top: 14px; }
+.chat-md h1 { font-size: 17px; }
+.chat-md h2 { font-size: 13px; margin-top: 14px; padding-bottom: 5px; }
+.chat-md h3 { font-size: 13px; }
+.chat-md p { margin: 0 0 8px; }
+.chat-md pre { margin: 6px 0; padding: 10px 12px; font-size: 12px; }
+.chat-md code { font-size: 12.5px; padding: 1px 5px; }
+.chat-md ul, .chat-md ol { margin-left: 18px; }
+.chat-md > :first-child { margin-top: 0; }
+.chat-md > :last-child { margin-bottom: 0; }
+
+/* tool call card */
+.tool-card {
+  margin: 8px 0;
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-family: var(--font-mono);
+}
+.tool-card.pending { border-color: rgba(34, 211, 238, 0.25); }
+.tool-card.err     { border-color: rgba(239, 68, 68, 0.35); }
+.tool-card.ok      { border-color: rgba(74, 222, 128, 0.22); }
+
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-1);
+  cursor: pointer;
+  text-align: left;
+  transition: background 60ms ease;
+}
+.tool-head:hover { background: var(--bg-2); }
+.tool-icon { color: var(--accent); flex-shrink: 0; }
+.tool-name { color: var(--text-0); font-weight: 600; }
+.tool-headline { color: var(--text-2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; }
+.tool-caret { color: var(--text-3); font-size: 10px; }
+
+.tool-status {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.tool-status.pending { color: var(--accent); background: rgba(34, 211, 238, 0.12); }
+.tool-status.pending::after {
+  content: '';
+  display: inline-block;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; margin-left: 6px;
+  animation: pulse 1.4s ease infinite;
+}
+.tool-status.ok      { color: var(--ok); background: rgba(74, 222, 128, 0.12); }
+.tool-status.err     { color: var(--err); background: rgba(239, 68, 68, 0.14); }
+
+.tool-body {
+  padding: 6px 12px 12px;
+  border-top: 1px solid var(--border-0);
+  background: var(--bg-0);
+}
+.tool-section { margin-top: 8px; }
+.tool-section-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 5px;
+}
+.tool-pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  color: var(--text-1);
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.55;
+}
+.tool-pre.err { color: #fca5a5; border-color: rgba(239, 68, 68, 0.32); }
+
+/* input */
+.chat-input {
+  border-top: 1px solid var(--border-1);
+  padding: 14px 18px;
+  background: var(--bg-0);
+  flex-shrink: 0;
+}
+.chat-textarea {
+  font-family: var(--font-sans);
+  resize: vertical;
+  min-height: 64px;
+  max-height: 220px;
+  line-height: 1.5;
+}
+
+/* gh banner */
+.gh-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  border: 1px solid var(--border-1);
+  background: var(--bg-panel);
+}
+.gh-banner.ok {
+  align-items: center;
+  border-color: rgba(74, 222, 128, 0.22);
+  background: rgba(74, 222, 128, 0.04);
+}
+.gh-banner.warn {
+  border-color: rgba(250, 204, 21, 0.28);
+  background: rgba(250, 204, 21, 0.04);
+}
+

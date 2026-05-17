@@ -7,6 +7,7 @@ import { Home } from './components/Home.tsx';
 import { NewScan } from './components/NewScan.tsx';
 import { Settings } from './components/Settings.tsx';
 import { ScanView } from './components/ScanView.tsx';
+import { ReportChat } from './components/ReportChat.tsx';
 
 export function App() {
   const route = useRoute();
@@ -43,6 +44,9 @@ export function App() {
         )}
         {current.name === 'scan' && (
           <ScanView slug={current.slug} navigate={route.navigate} />
+        )}
+        {current.name === 'fix' && (
+          <ReportChat slug={current.slug} reportId={current.reportId} navigate={route.navigate} />
         )}
         {current.name === 'not-found' && (
           <div className="empty-state fade-in">

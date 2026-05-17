@@ -19,6 +19,13 @@
 //   POST   /api/scans/:slug/skip  — { index }
 //   GET    /api/scans/:slug/reports
 //   GET    /api/scans/:slug/reports/:id
+//
+//   GET    /api/preflight/gh     — is the gh CLI installed + authenticated?
+//   GET    /api/chat/:slug/:id   — chat transcript snapshot
+//   GET    /api/chat/:slug/:id/events — SSE stream of chat events
+//   POST   /api/chat/:slug/:id/messages — body: { text } — send a turn
+//   POST   /api/chat/:slug/:id/abort    — stop in-flight agent run
+//   POST   /api/chat/:slug/:id/reset    — drop transcript and start over
 
 import express from 'express';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -38,6 +45,8 @@ import {
   ScanRegistry,
   listPastScans,
 } from './scans.js';
+import { ChatRegistry } from './chat.js';
+import { checkGh } from './preflight.js';
 
 const ALL_PROVIDERS: KnownProvider[] = ['openrouter', 'openai', 'anthropic'];
 
@@ -121,6 +130,7 @@ export function createApiRouter(): express.Router {
   router.use(express.json({ limit: '64kb' }));
 
   const registry = new ScanRegistry();
+  const chat = new ChatRegistry();
 
   // ----- config / setup -----
 
@@ -405,6 +415,91 @@ export function createApiRouter(): express.Router {
     if (!existsSync(reportPath)) return res.status(404).json({ error: 'Report not found' });
     const markdown = readFileSync(reportPath, 'utf8');
     res.json({ id, markdown });
+  });
+
+  // ----- preflight -----
+
+  router.get('/preflight/gh', async (_req, res) => {
+    try {
+      const status = await checkGh();
+      res.json(status);
+    } catch (err) {
+      res.status(500).json({ installed: false, authed: false, detail: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ----- chat -----
+
+  const validId = (s: string) => /^[a-zA-Z0-9._-]+$/.test(s);
+
+  router.get('/chat/:slug/:id', (req, res) => {
+    const { slug, id } = req.params;
+    if (!validId(slug) || !validId(id)) return res.status(400).json({ error: 'Invalid id' });
+    const session = chat.get(slug, id);
+    if (!session) return res.json({ turns: [], status: 'idle', exists: false });
+    const snap = session.snapshot();
+    res.json({ ...snap, exists: true });
+  });
+
+  router.get('/chat/:slug/:id/events', (req, res) => {
+    const { slug, id } = req.params;
+    if (!validId(slug) || !validId(id)) return res.status(400).json({ error: 'Invalid id' });
+    const session = chat.getOrCreate({ slug, reportId: id });
+    if (!session) return res.status(404).json({ error: 'Scan or report not found' });
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    const send = (data: unknown) => {
+      try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch { /* connection closed */ }
+    };
+    const unsubscribe = session.subscribe(send);
+    const heartbeat = setInterval(() => {
+      try { res.write(': ping\n\n'); } catch { /* ignore */ }
+    }, 15_000);
+
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      unsubscribe();
+    });
+  });
+
+  router.post('/chat/:slug/:id/messages', async (req, res) => {
+    const { slug, id } = req.params;
+    if (!validId(slug) || !validId(id)) return res.status(400).json({ error: 'Invalid id' });
+    const text = (req.body as { text?: unknown }).text;
+    if (typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ error: 'text is required' });
+    }
+    const session = chat.getOrCreate({ slug, reportId: id });
+    if (!session) return res.status(404).json({ error: 'Scan or report not found' });
+    try {
+      await session.sendMessage(text.trim());
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(409).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/chat/:slug/:id/abort', (req, res) => {
+    const { slug, id } = req.params;
+    if (!validId(slug) || !validId(id)) return res.status(400).json({ error: 'Invalid id' });
+    const session = chat.get(slug, id);
+    if (!session) return res.status(404).json({ error: 'No chat session' });
+    session.abort();
+    res.json({ ok: true });
+  });
+
+  router.post('/chat/:slug/:id/reset', (req, res) => {
+    const { slug, id } = req.params;
+    if (!validId(slug) || !validId(id)) return res.status(400).json({ error: 'Invalid id' });
+    const session = chat.get(slug, id);
+    if (!session) return res.json({ ok: true });
+    session.resetTranscript();
+    res.json({ ok: true });
   });
 
   return router;
