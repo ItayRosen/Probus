@@ -50,6 +50,9 @@ export function ReportChat({ slug, reportId, navigate }: Props) {
   const [severity, setSeverity] = useState<string | null>(null);
   const [repoPath, setRepoPath] = useState<string>('');
   const [reportAbsPath, setReportAbsPath] = useState<string>('');
+  const [activeModel, setActiveModel] = useState<string>('');
+  const [modelIsFallback, setModelIsFallback] = useState<boolean>(false);
+  const [provider, setProvider] = useState<string>('');
 
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [status, setStatus] = useState<ChatStatus>('idle');
@@ -82,6 +85,13 @@ export function ReportChat({ slug, reportId, navigate }: Props) {
         if (scan?.outputDir) {
           setReportAbsPath(`${scan.outputDir.replace(/\/$/, '')}/reports/${reportId}`);
         }
+        // Mirror the server-side model selection (secondary > primary) so the
+        // UI shows the exact model the fix agent is using.
+        const secondary = scan?.metadata?.secondaryModel?.trim() ?? '';
+        const primary = scan?.metadata?.primaryModel?.trim() ?? '';
+        setActiveModel(secondary || primary || '');
+        setModelIsFallback(!secondary && !!primary);
+        setProvider(scan?.metadata?.provider ?? '');
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -299,6 +309,7 @@ export function ReportChat({ slug, reportId, navigate }: Props) {
         </div>
 
         <aside className="chat-sidebar">
+          <ModelSidecar model={activeModel} provider={provider} isFallback={modelIsFallback} />
           <GhSidecar gh={gh} onRecheck={refreshGh} />
         </aside>
       </div>
@@ -385,6 +396,39 @@ function applyEvent(prev: ChatTurn[], ev: ChatEvent): ChatTurn[] {
     default:
       return prev;
   }
+}
+
+function ModelSidecar({ model, provider, isFallback }: { model: string; provider: string; isFallback: boolean }) {
+  if (!model) return null;
+  // Strip the provider prefix for cleaner display, keeping the full slug
+  // in `title` for the curious.
+  const display = model.includes('/') ? model.slice(model.indexOf('/') + 1) : model;
+  return (
+    <div className="panel sidecar">
+      <div className="panel-header">
+        <div className="panel-title">Fix model</div>
+        <span className="spacer" />
+        <span className="chip" style={{ fontSize: 10 }}>
+          {isFallback ? 'fallback' : 'secondary'}
+        </span>
+      </div>
+      <div className="panel-body col" style={{ gap: 8 }}>
+        <div className="mono" style={{ fontSize: 12.5, color: 'var(--text-0)', wordBreak: 'break-all' }} title={model}>
+          {display}
+        </div>
+        {provider && (
+          <div className="muted" style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+            via {provider}
+          </div>
+        )}
+        <div className="muted" style={{ fontSize: 11, lineHeight: 1.55 }}>
+          {isFallback
+            ? 'No secondary model was recorded for this scan, so we\'re using the primary.'
+            : 'Fixes use the secondary (verifier) model — stronger than the per-file scanner.'}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function GhSidecar({ gh, onRecheck }: { gh: GhStatus | null; onRecheck: () => void }) {

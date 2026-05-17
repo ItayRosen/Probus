@@ -327,11 +327,22 @@ export class ChatRegistry {
     if (!existsSync(reportPath)) return null;
     const reportMarkdown = readFileSync(reportPath, 'utf8');
 
-    // Use the secondary (verifier) model — it's the stronger one and fixing
-    // is a higher-stakes task than the per-file scan.
+    // PR creation runs on the secondary (verifier) model. That's the
+    // stronger one in each provider's default lineup — fixing real code and
+    // opening a PR is higher-stakes than the per-file scan, so we want the
+    // smarter model here regardless of whether the user customized primary.
+    // Only fall back to primary if no secondary was recorded for the scan.
     const model = meta.secondaryModel || meta.primaryModel;
     if (!model) return null;
     if (!meta.repoPath) return null;
+    if (!meta.secondaryModel && meta.primaryModel) {
+      console.warn(
+        `[chat] no secondary model recorded for scan ${opts.slug}; ` +
+        `falling back to primary (${meta.primaryModel}).`,
+      );
+    } else {
+      console.log(`[chat] starting fix session for ${opts.slug}/${opts.reportId} on ${model}`);
+    }
 
     const session = new ChatSession({
       slug: opts.slug,
