@@ -244,10 +244,27 @@ export function ReportChat({ slug, reportId, navigate }: Props) {
             </div>
 
             {error && (
-              <div className="error-banner" style={{ margin: '12px 16px', flexShrink: 0 }}>
-                <div>
-                  <div className="err-title">Agent error</div>
-                  <div className="muted">{error}</div>
+              <div className="error-banner chat-error" style={{ margin: '12px 16px', flexShrink: 0 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="row" style={{ gap: 10 }}>
+                    <div className="err-title">Agent error</div>
+                    <span className="spacer" />
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{ padding: '2px 8px', fontSize: 11 }}
+                      onClick={() => { void navigator.clipboard.writeText(error); }}
+                      title="Copy error to clipboard"
+                    >Copy</button>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{ padding: '2px 8px', fontSize: 11 }}
+                      onClick={() => setError(null)}
+                      title="Dismiss"
+                    >✕</button>
+                  </div>
+                  <pre className="err-detail">{error}</pre>
                 </div>
               </div>
             )}

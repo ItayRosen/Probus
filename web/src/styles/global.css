@@ -690,6 +690,21 @@ body {
   align-items: flex-start;
 }
 .error-banner .err-title { font-weight: 600; color: #fef2f2; }
+.error-banner .err-detail {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: var(--radius-sm);
+  color: #fecaca;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
 
 /* ---- utility ---- */
 .row { display: flex; align-items: center; gap: 10px; }

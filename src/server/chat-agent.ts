@@ -124,11 +124,46 @@ export async function* runChatAgent(opts: RunChatAgentOpts): AsyncGenerator<Chat
             };
           }
         }
+      } else if (msg.type === 'system') {
+        // System-channel errors (e.g. session-mirror failures) are surfaced
+        // as a non-fatal error event so the user sees them in the UI.
+        const sys = msg as { subtype?: string; error?: string };
+        if (sys.subtype === 'mirror_error' && sys.error) {
+          yield { type: 'error', text: `system: ${sys.error}` };
+        }
       } else if (msg.type === 'result') {
-        const res = msg as { subtype?: string; is_error?: boolean };
+        // SDKResultError exposes real detail in `errors`, `subtype`, etc.
+        // Pull every relevant field instead of collapsing it to a generic string.
+        const res = msg as {
+          subtype?: string;
+          is_error?: boolean;
+          result?: string;
+          errors?: string[];
+          permission_denials?: Array<{ tool_name?: string; reason?: string }>;
+          stop_reason?: string | null;
+          terminal_reason?: { type?: string; reason?: string } | null;
+        };
         const ok = res.subtype === 'success' && !res.is_error;
-        if (ok) yield { type: 'done' };
-        else yield { type: 'error', text: 'agent exited with error' };
+        if (ok) {
+          yield { type: 'done' };
+          return;
+        }
+
+        const lines: string[] = [];
+        if (res.subtype && res.subtype !== 'success') lines.push(`exit: ${res.subtype}`);
+        if (Array.isArray(res.errors)) {
+          for (const e of res.errors) if (e) lines.push(e);
+        }
+        if (Array.isArray(res.permission_denials)) {
+          for (const d of res.permission_denials) {
+            lines.push(`permission denied: ${d.tool_name ?? 'unknown'}${d.reason ? ' — ' + d.reason : ''}`);
+          }
+        }
+        if (res.stop_reason) lines.push(`stop_reason: ${res.stop_reason}`);
+        if (res.terminal_reason?.reason) lines.push(`terminal: ${res.terminal_reason.reason}`);
+        if (res.result) lines.push(res.result);
+        if (lines.length === 0) lines.push('agent exited with error (no detail returned by the SDK)');
+        yield { type: 'error', text: lines.join('\n') };
         return;
       }
     }

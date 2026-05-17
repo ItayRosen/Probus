@@ -174,6 +174,29 @@ export class ChatSession {
     this.emit({ type: 'status', status: s });
   }
 
+  /**
+   * Surface an agent error in two places at once:
+   *   1. Inline in the assistant turn as a text part — so the error sticks
+   *      around in chat history and is preserved across resets/scrolls.
+   *   2. As a separate `error` event so the UI can also show its banner.
+   */
+  private recordError(turn: ChatTurn, message: string): void {
+    const block = `\n\n> ⚠️ **Agent error**\n>\n${message
+      .split('\n')
+      .map(l => `> ${l}`)
+      .join('\n')}\n`;
+    const last = turn.parts[turn.parts.length - 1];
+    if (last && last.kind === 'text') {
+      last.text += block;
+    } else {
+      turn.parts.push({ kind: 'text', text: block });
+    }
+    // Stream to live clients via the existing text-delta path so they see
+    // it without needing to refetch the snapshot.
+    this.emit({ type: 'text-delta', turnId: turn.id, text: block });
+    this.emit({ type: 'error', message });
+  }
+
   private buildPrompt(): string {
     // We pass the prior transcript as part of the prompt so the agent has
     // continuity across turns. Tool-result outputs are summarized rather
@@ -263,14 +286,14 @@ export class ChatSession {
         } else if (ev.type === 'usage') {
           this.emit({ type: 'tokens', tokens: ev.tokens });
         } else if (ev.type === 'error') {
-          this.emit({ type: 'error', message: ev.text });
+          this.recordError(assistantTurn, ev.text);
         } else if (ev.type === 'skipped') {
           // user-initiated abort — leave the partial turn as-is, go idle
           break;
         }
       }
     } catch (err) {
-      this.emit({ type: 'error', message: err instanceof Error ? err.message : String(err) });
+      this.recordError(assistantTurn, err instanceof Error ? err.message : String(err));
     } finally {
       this.abortCtrl = null;
       this.emit({ type: 'turn-end', turnId: assistantTurn.id });
