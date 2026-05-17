@@ -34,8 +34,13 @@ interface Props {
   navigate: (to: string) => void;
 }
 
-const KICKOFF_MESSAGE =
-  'Review this finding, propose a minimal fix, and open a PR with the change. Walk me through your reasoning as you go.';
+function kickoffMessage(reportAbsPath: string): string {
+  return [
+    'Review the vulnerability report at the absolute path below, propose a minimal fix, and open a PR with the change. Walk me through your reasoning as you go.',
+    '',
+    `Report: ${reportAbsPath}`,
+  ].join('\n');
+}
 
 marked.setOptions({ async: false, gfm: true, breaks: false });
 
@@ -44,6 +49,7 @@ export function ReportChat({ slug, reportId, navigate }: Props) {
   const [reportName, setReportName] = useState<string>('');
   const [severity, setSeverity] = useState<string | null>(null);
   const [repoPath, setRepoPath] = useState<string>('');
+  const [reportAbsPath, setReportAbsPath] = useState<string>('');
 
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [status, setStatus] = useState<ChatStatus>('idle');
@@ -71,6 +77,11 @@ export function ReportChat({ slug, reportId, navigate }: Props) {
         setReportName(meta?.name ?? reportId);
         setSeverity(meta?.severity ?? null);
         setRepoPath(scan?.metadata?.repoPath ?? '');
+        // Build the absolute report path; we keep paths as POSIX-style here
+        // since the server normalises and the path comes from /api/scans/:slug.
+        if (scan?.outputDir) {
+          setReportAbsPath(`${scan.outputDir.replace(/\/$/, '')}/reports/${reportId}`);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -123,20 +134,22 @@ export function ReportChat({ slug, reportId, navigate }: Props) {
   }, [slug, reportId]);
 
   // First-visit kickoff: if there's no chat history yet, send a default
-  // "review this and open a PR" message so the agent starts on its own.
+  // "review this and open a PR" message — with the absolute report path so
+  // the agent can re-read the canonical file at any point.
   useEffect(() => {
     if (autoSendDone.current) return;
     if (!initialLoadDone.current) return;
     if (!reportMarkdown) return;            // wait until the report is loaded
+    if (!reportAbsPath) return;             // need the absolute path
     if (status === 'streaming') return;     // already in flight
     if (turns.length > 0) {                 // existing history → skip
       autoSendDone.current = true;
       return;
     }
     autoSendDone.current = true;
-    void send(KICKOFF_MESSAGE);
+    void send(kickoffMessage(reportAbsPath));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportMarkdown, status, turns.length, initialLoadDone.current]);
+  }, [reportMarkdown, reportAbsPath, status, turns.length, initialLoadDone.current]);
 
   const canSend = useMemo(() => {
     if (status === 'streaming') return false;

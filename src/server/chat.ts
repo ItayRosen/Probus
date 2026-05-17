@@ -54,6 +54,7 @@ You are a senior security engineer pair-programming with the user to fix a confi
 
 <repository>
 The repository is at: {{REPO_PATH}}
+The vulnerability report markdown lives at: {{REPORT_PATH}}
 You have shell access via Bash, plus Read / Write / Edit / Grep / Glob for source files.
 </repository>
 
@@ -88,6 +89,7 @@ export interface StartChatOpts {
   slug: string;
   reportId: string;
   reportMarkdown: string;
+  reportPath: string;
   repoPath: string;
   model: string;
 }
@@ -97,6 +99,7 @@ export class ChatSession {
   readonly slug: string;
   readonly reportId: string;
   readonly reportMarkdown: string;
+  readonly reportPath: string;
   readonly repoPath: string;
   readonly model: string;
   readonly systemPrompt: string;
@@ -111,10 +114,12 @@ export class ChatSession {
     this.slug = opts.slug;
     this.reportId = opts.reportId;
     this.reportMarkdown = opts.reportMarkdown;
+    this.reportPath = opts.reportPath;
     this.repoPath = opts.repoPath;
     this.model = opts.model;
     this.systemPrompt = SYSTEM_PROMPT_TEMPLATE
       .replace('{{REPO_PATH}}', opts.repoPath)
+      .replace('{{REPORT_PATH}}', opts.reportPath)
       .replace('{{REPORT_MARKDOWN}}', opts.reportMarkdown);
   }
 
@@ -309,6 +314,7 @@ export class ChatRegistry {
       slug: opts.slug,
       reportId: opts.reportId,
       reportMarkdown,
+      reportPath,
       repoPath: meta.repoPath,
       model,
     });
