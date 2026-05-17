@@ -44,19 +44,34 @@ async function main(): Promise<void> {
       const portEnv = process.env.PROBUS_PORT ? Number(process.env.PROBUS_PORT) : undefined;
       const noOpenEnv = !!process.env.PROBUS_NO_OPEN;
 
-      const { url } = await startServer({
-        port: parsed.port ?? portEnv,
-        openBrowser: parsed.openBrowser && !noOpenEnv,
-      });
-
-      printBanner(url);
+      try {
+        const { url, dev } = await startServer({
+          port: parsed.port ?? portEnv,
+          openBrowser: parsed.openBrowser && !noOpenEnv,
+        });
+        printBanner(url, dev);
+      } catch (err) {
+        if (err && typeof err === 'object' && (err as { code?: string }).code === 'EADDRINUSE') {
+          const port = parsed.port ?? portEnv ?? '?';
+          console.error(
+            `\n  Port ${port} is already in use.\n` +
+            `  Another \`probus\` process is probably still running.\n\n` +
+            `  Free it up:\n` +
+            `    lsof -ti :${port} | xargs kill\n` +
+            `  Or pick a different port:\n` +
+            `    PROBUS_PORT=9092 npm run dev\n`,
+          );
+          process.exit(1);
+        }
+        throw err;
+      }
       // Keep alive until SIGINT/SIGTERM.
       await new Promise<void>(() => { /* never resolves */ });
     }
   }
 }
 
-function printBanner(url: string): void {
+function printBanner(url: string, dev: boolean): void {
   const useColor = process.stdout.isTTY && !process.env.NO_COLOR && process.env.TERM !== 'dumb';
   const c = (open: string, close: string) => (s: string) => useColor ? `\x1b[${open}m${s}\x1b[${close}m` : s;
   const bold = c('1', '22');
@@ -64,10 +79,15 @@ function printBanner(url: string): void {
   const cyan = c('36', '39');
   const magenta = c('35', '39');
 
+  const modeLine = dev
+    ? `  ${dim('Mode')}  ${bold(cyan('dev'))} ${dim('(Vite HMR for web/, tsx-watch for src/ — no build step)')}`
+    : `  ${dim('Mode')}  ${bold('prod')} ${dim('(serving prebuilt dist/web/)')}`;
+
   const banner = [
     '',
     `  ${bold(magenta('probus'))} ${dim('— agentic security scanner')}`,
     '',
+    modeLine,
     `  ${dim('Open')}  ${bold(cyan(url))}`,
     `  ${dim('Stop')}  ${bold('Ctrl+C')}`,
     '',

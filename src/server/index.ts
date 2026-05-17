@@ -23,6 +23,7 @@ export interface StartServerOpts {
 export async function startServer(opts: StartServerOpts = {}): Promise<{
   url: string;
   port: number;
+  dev: boolean;
   close: () => Promise<void>;
 }> {
   const app = express();
@@ -33,13 +34,24 @@ export async function startServer(opts: StartServerOpts = {}): Promise<{
 
   const devMode = process.env.PROBUS_DEV === '1';
 
+  // Create the HTTP server up front so Vite can share its WebSocket with us
+  // (avoids a second HMR port that the browser may fail to reach).
+  const server = http.createServer(app);
+
   if (devMode) {
     // Dev mode: Vite middleware gives us HMR on web/ without a build step.
     // Vite is a devDep — only imported when explicitly requested.
     const { createServer: createVite } = await import('vite');
     const webRoot = path.join(PACKAGE_ROOT, 'web');
     const vite = await createVite({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        // Reuse our Node HTTP server for the HMR WebSocket. Without this,
+        // Vite opens a second port that the browser may not reach (firewall,
+        // mismatched origin, etc.) so HMR silently fails.
+        hmr: { server },
+        watch: { usePolling: false },
+      },
       appType: 'custom',
       root: webRoot,
       configFile: path.join(webRoot, 'vite.config.ts'),
@@ -77,8 +89,6 @@ export async function startServer(opts: StartServerOpts = {}): Promise<{
     }
   }
 
-  const server = http.createServer(app);
-
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(opts.port ?? 0, HOST, () => resolve());
@@ -93,6 +103,7 @@ export async function startServer(opts: StartServerOpts = {}): Promise<{
   return {
     url,
     port,
+    dev: devMode,
     close: () => new Promise<void>(resolve => server.close(() => resolve())),
   };
 }
