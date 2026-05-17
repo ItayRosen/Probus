@@ -22,6 +22,8 @@ Probus harnesses 3 agents that:
 - [Researcher] Scan each file, dig through its chains of calls, and write raw findings (potential vulnerabilities).
 - [QA] Independently verify each finding, make sure it has a real attack vector, and write a report.
 
+![Per-finding report with vulnerable code, attack path, and a one-click Fix → PR action](./docs/report.png)
+
 ## Quick start
 
 ```bash
