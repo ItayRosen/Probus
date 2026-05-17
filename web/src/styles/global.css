@@ -1181,29 +1181,87 @@ body {
 }
 
 /* ---- chat view ---- */
-.chat-split {
+.chat-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 16px;
-  align-items: stretch;
-  min-height: calc(100vh - 240px);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .chat-layout { grid-template-columns: 1fr; }
 }
 
-.chat-context {
+.chat-main-col {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Collapsible vulnerability report — native <details> with custom chrome. */
+.report-collapsible {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
-.chat-context-body {
+.report-collapsible summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 18px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-0);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 80ms ease;
+}
+.report-collapsible summary::-webkit-details-marker { display: none; }
+.report-collapsible summary::marker { content: ''; }
+.report-collapsible summary:hover { background: var(--bg-2); }
+.report-collapsible[open] summary { border-bottom: 1px solid var(--border-1); }
+.report-caret {
+  display: inline-block;
+  color: var(--accent);
+  transition: transform 120ms ease;
+  font-size: 12px;
+  width: 12px;
+  text-align: center;
+}
+.report-collapsible[open] .report-caret { transform: rotate(90deg); }
+.report-collapsible-body {
+  max-height: 56vh;
   overflow-y: auto;
-  flex: 1;
 }
 
-.chat-main {
+/* Chat panel — owns its own height regardless of the report state. */
+.chat-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  height: 72vh;
+  min-height: 540px;
+  max-height: 880px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 600px;
+}
+
+/* Right-side sticky sidecar (gh status, etc.) */
+.chat-sidebar {
+  position: sticky;
+  top: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sidecar { /* sidecar variant of .panel */
+  background: var(--bg-panel);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
 }
 
 .chat-messages {
@@ -1391,26 +1449,5 @@ body {
   min-height: 64px;
   max-height: 220px;
   line-height: 1.5;
-}
-
-/* gh banner */
-.gh-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 14px 18px;
-  border-radius: var(--radius);
-  margin-bottom: 14px;
-  border: 1px solid var(--border-1);
-  background: var(--bg-panel);
-}
-.gh-banner.ok {
-  align-items: center;
-  border-color: rgba(74, 222, 128, 0.22);
-  background: rgba(74, 222, 128, 0.04);
-}
-.gh-banner.warn {
-  border-color: rgba(250, 204, 21, 0.28);
-  background: rgba(250, 204, 21, 0.04);
 }
 
